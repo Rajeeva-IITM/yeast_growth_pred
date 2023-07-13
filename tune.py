@@ -2,21 +2,23 @@
 
 import optuna
 import torch
-import wandb
+# import wandb
 from pathlib import Path
-from torch import nn
+# from torch import nn
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.callbacks.progress.rich_progress import \
     RichProgressBarTheme
-from pytorch_lightning.loggers.wandb import WandbLogger
-from optuna.integration import PyTorchLightningPruningCallback
+# from pytorch_lightning.loggers.wandb import WandbLogger
+# from optuna.integration import PyTorchLightningPruningCallback
+
+# from argparse import ArgumentParser
 
 from rich.console import Console
 from rich.traceback import install
 
 from lightning_model import Netlightning
-from data import EncodeModule
+from data import KFoldEncodeModule
 
 
 install()
@@ -25,10 +27,11 @@ console = Console(record=True)
 torch.set_float32_matmul_precision("high")
 
 # Define filename
-filename = "../data/regression_data/bloom2013_regression.feather"
-groupname = "Tuning - Bloom2013"
-date = "mwah"
+filename = "../data/regression_data/bloom2015_regression.feather" # Name of file
+groupname = "Tuning - Bloom2015" # Group name
+savename = "03-07-23_2015" # Name of saving the results
 
+#Customizing the progress bar
 pbar = RichProgressBar(
             theme=RichProgressBarTheme(
                 description="#af005f",
@@ -39,20 +42,18 @@ pbar = RichProgressBar(
             )
         )
 
-datamodule = EncodeModule(filename, batch_size=64, num_workers=4)
-datamodule.setup()
-
+#Defining the objective
 def objective(trial: optuna.Trial) -> float:
     
     seed_everything(42)
     torch.cuda.empty_cache()
     
-    wandb_logger = WandbLogger(
-    project="Regression - Bloom",
-    group=groupname,
-    job_type="Tuning",
-    save_dir="/storage/bt20d204/runs/regression_bloom/tuning_2013/"
-    )
+    # wandb_logger = WandbLogger(
+    # project="Regression - Bloom",
+    # group=groupname,
+    # job_type="Tuning",
+    # save_dir="/storage/bt20d204/runs/regression_bloom/tuning_2013/"
+    # )
     
     input_size = 6078
     output_size = 1
@@ -73,7 +74,23 @@ def objective(trial: optuna.Trial) -> float:
         "activation", ["relu", "tanh", "sigmoid", "celu", "gelu"]
     )
     
-    model = Netlightning(
+    score_vector = []
+    
+    for k in range(5):
+        
+        console.log("Fold {}".format(k), justify="center")
+        
+        datamodule = KFoldEncodeModule(
+            filename,
+            k=k,
+            split_seed=42,
+            num_splits=5,
+            num_workers=10,
+            batch_size=64,
+            test_size=0.2
+        )
+        
+        model = Netlightning(
         input_size=input_size,
         output_size=output_size,
         hidden_layers=hidden_layers,
@@ -83,22 +100,25 @@ def objective(trial: optuna.Trial) -> float:
         max_lr=max_lr,
         activation = activation,
         loss_function = "mse",
-    )
+        )
     
-    trainer = Trainer(
-    logger=wandb_logger, accelerator='gpu', devices=1, max_epochs=50, 
-    callbacks=[pbar, PyTorchLightningPruningCallback(trial, monitor="val_mse")],
-    enable_checkpointing=False
-    )
+        trainer = Trainer(
+        logger=True, accelerator='gpu', devices=1, max_epochs=50, 
+        callbacks=[pbar], default_root_dir="/storage/bt20d204/runs/regression_bloom/tuning_2015/",  
+        enable_checkpointing=False
+        )
+        
+        trainer.fit(model, datamodule)
+        
+        score_vector.append(trainer.callback_metrics["val_mse"].item())
     
-    trainer.fit(model, datamodule)
-    wandb.finish()
+    console.rule(title="[bold red]THE RUN ENDS[/bold red]", characters="-*", align="center")
     
-    return trainer.callback_metrics["val_mse"].item()
+    return torch.Tensor(score_vector).mean().item()
 
 if __name__ == '__main__':
     
-    filepath = Path(f"/storage/bt20d204/runs/regression_bloom/tuning_2013/{date}.log")
+    filepath = Path(f"/storage/bt20d204/runs/regression_bloom/tuning_2015/{savename}.log")
     
     console.print(
         f"[royal_blue1]Optuna Tuning - {groupname}[/royal_blue1]",
@@ -125,7 +145,7 @@ if __name__ == '__main__':
         load_if_exists=True
     )
     
-    study.optimize(objective, n_trials=250)
+    study.optimize(objective, n_trials=100, gc_after_trial=True)
     
     console.print("Number of finished trials: {}".format(len(study.trials)))
 

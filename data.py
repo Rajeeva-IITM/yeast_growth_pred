@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import torch
 from torch.utils.data import Subset, Dataset, DataLoader
 from pytorch_lightning import LightningDataModule
 from sklearn.model_selection import train_test_split, KFold
@@ -275,12 +276,23 @@ if __name__ == "__main__":
     
     #Testing
     
-    dm = KFoldEncodeModule(
-        path = "../data/regression_data/bloom2013_regression.feather"
+    dm1 = KFoldEncodeModule(
+        path = "../data/bloom2013_shared_clf_3_pubchem.feather"
     )
-    dm.setup()
+    dm1.setup()
     
-    loader = dm.val_dataloader()
+    dm2 = KFoldEncodeModule(
+        path = "../data/bloom2013_shared_clf_3_pubchem.feather",
+        k=1
+    )
+    dm2.setup()
+    
+    loader = dm1.val_dataloader()
     X, y = next(iter(loader))
     
-    print(X, y)
+    loader2 = dm2.val_dataloader()
+    X2, y2 = next(iter(loader2))
+    
+    print(X, '\n', X2)
+    
+    assert torch.eq(X, X2).all().item(), "X and X2 is different"

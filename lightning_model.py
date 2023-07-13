@@ -29,7 +29,7 @@ class Netlightning(LightningModule):
         Args:
             input_size (int): size of the input layer
             output_size (int): size of the output layer
-            hidden_layers (int): sizes of the hidden layers
+            hidden_layers List(int): sizes of the hidden layers
             dropout (float): dropout
             lr (float): learning rate
             weight_decay (float): weigt_decay
@@ -40,7 +40,7 @@ class Netlightning(LightningModule):
         
         super(Netlightning, self).__init__()
         
-        self.save_hyperparameters(ignore=['loss_function'])
+        self.save_hyperparameters()
         
         self.net = Net(
             hidden_layers = hidden_layers,
