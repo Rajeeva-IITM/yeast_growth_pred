@@ -12,8 +12,8 @@ from data import KFoldEncodeModule
 
 torch.set_float32_matmul_precision("high")
 
-name = "bloom2013_regression"
-data_filename = "../data/regression_data/bloom2013_regression.feather"
+name = "bloom2015_reg"
+data_filename = "../data/regression_data/bloom2015_regression.feather"
 
 if __name__ == "__main__":
     
@@ -23,7 +23,6 @@ if __name__ == "__main__":
 
     wandb_savedir = f"../runs/regression_bloom/{name}"
     ckpt_savedir = f"../runs/regression_bloom/{name}"
-    ckpt_savename = f"{name}-" + "{epoch}-{step}"
     
     pbar = RichProgressBar(
             theme=RichProgressBarTheme(
@@ -38,6 +37,9 @@ if __name__ == "__main__":
     for k in range(num_folds):
     
         print(f"Fold {k}")
+        
+        ckpt_savename = f"{name}-{k}" + "{epoch}-{step}"
+        
         wandb_logger = WandbLogger(
             project="Regression - Bloom",
             name=f"Fold {k}",
@@ -62,12 +64,12 @@ if __name__ == "__main__":
         model = Netlightning(
             input_size=6078,
             output_size=1,
-            hidden_layers= [1024,512,256,128],
-            dropout=0.8992,
-            lr=0.00091,
-            weight_decay=0.00306,
-            max_lr=0.01003,
-            activation="gelu",
+            hidden_layers= [1024,512,256,128,64,32,16,8],
+            dropout=0.545587,
+            lr=4.9454121e-6,
+            weight_decay=0.0013357,
+            max_lr=0.013641,
+            activation="celu",
             loss_function="mse",
         )
         
