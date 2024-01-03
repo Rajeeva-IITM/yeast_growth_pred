@@ -135,8 +135,8 @@ class MultiViewNet(nn.Module):
         if len(input_size) != 2:
             raise ValueError("Input size must be 2.")
         
-        if len(layers_after_concat) != len(layers_before_concat):  #TODO: This is only for simplicity's sake
-            raise ValueError("Number of layers before and after concatenation must be the same.")
+        # if len(layers_after_concat) != len(layers_before_concat):  #TODO: This is only for simplicity's sake
+        #     raise ValueError("Number of layers before and after concatenation must be the same.")
             
         
         super(MultiViewNet, self).__init__()
@@ -210,7 +210,7 @@ class MultiViewNet(nn.Module):
         self.view1 = nn.Sequential(*self.view1)
         self.view2 = nn.Sequential(*self.view2)
         
-        for i in range(len(self.layers_before_concat)-2):
+        for i in range(len(self.layers_after_concat)-2):
             
             self.postconcat.append(
                 nn.Linear(self.layers_after_concat[i], self.layers_after_concat[i+1], dtype=torch.float)
@@ -251,13 +251,13 @@ if __name__ == "__main__":
     # )
     
     model = MultiViewNet(
-        layers_before_concat=[512, 256, 128],
-        layers_after_concat=[512, 256, 128],
+        layers_before_concat=[256, 128, 64, 32, 16, 512],
+        layers_after_concat=[2048, 1024,512,256,128,64,32,16,8,4,2],
         input_size=[600,600],
         output_size=1,
         dropout=0.2,
     )
     
-    test = torch.randn(1000, 1200, dtype=torch.float32)
+    test = torch.randn(20, 1200, dtype=torch.float32)
     
-    print(model(test))
+    print(model)

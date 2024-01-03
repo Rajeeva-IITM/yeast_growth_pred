@@ -1,0 +1,29 @@
+defaults:
+  - _self_
+  - trainer: default
+  - callbacks: defaults
+  - paths: default
+  - data: dataset
+
+groupname: "Bloom2013"
+savename: tuning_${now:%d_%m_%Y}
+
+trainer:
+  enable_checkpointing: false
+  enable_progress_bar: false
+  enable_model_summary: false
+  max_epochs: 50
+  default_root_dir: ${paths.log_dir}${groupname}/
+
+optuna:
+
+  n_jobs: 4 
+
+  sampler:
+    _target_: optuna.samplers.TPESampler
+    seed: 42
+
+  storage:
+    _target_: optuna.storages.JournalFileStorage
+    file_path: ${paths.log_dir}${groupname}.log
+

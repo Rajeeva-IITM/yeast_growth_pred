@@ -85,7 +85,7 @@ def objective(trial: optuna.Trial) -> float:
             k=k,
             split_seed=42,
             num_splits=5,
-            num_workers=10,
+            num_workers=4,
             batch_size=64,
             test_size=0.2
         )
@@ -112,7 +112,6 @@ def objective(trial: optuna.Trial) -> float:
         
         score_vector.append(trainer.callback_metrics["val_mse"].item())
     
-    console.rule(title="[bold red]THE RUN ENDS[/bold red]", characters="-*", align="center")
     
     return torch.Tensor(score_vector).mean().item()
 

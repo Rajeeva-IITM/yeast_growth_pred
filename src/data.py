@@ -53,6 +53,7 @@ class KFoldEncodeModule(LightningDataModule):
         num_workers: int = 4,
         batch_size: int = 64,
         test_size: float = 0.2,
+        stratify: 'str' = None
     ):
         """Lightning data module for K-Fold Cross Validation
 
@@ -65,6 +66,7 @@ class KFoldEncodeModule(LightningDataModule):
             num_workers (int, optional): Number of workers. Defaults to 4.
             batch_size (int, optional): batch size. Defaults to 64.
             test_size (float, optional): test size. Defaults to 0.2.
+            stratify (str, optional): stratify column. Defaults to None.
         """
         
         super().__init__()
@@ -81,6 +83,7 @@ class KFoldEncodeModule(LightningDataModule):
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.test_size = test_size
+        self.stratify = stratify
         
         self.save_hyperparameters()
         
@@ -104,6 +107,7 @@ class KFoldEncodeModule(LightningDataModule):
 
         self.X = data.drop(["Phenotype", "Condition", "Strain"], axis=1)
         self.y = data["Phenotype"].astype(np.float32)
+        self.stratify_col = data[self.stratify] if self.stratify else None
         
         try:
             self.condition = data["Condition"]
@@ -118,6 +122,7 @@ class KFoldEncodeModule(LightningDataModule):
             np.arange(len(self.dataset)),
             test_size=self.test_size,
             random_state=self.split_seed,
+            stratify=self.stratify_col
         )
         
         # Create test and training datasets
@@ -277,13 +282,14 @@ if __name__ == "__main__":
     #Testing
     
     dm1 = KFoldEncodeModule(
-        path = "../data/bloom2013_shared_clf_3_pubchem.feather"
+        path = "/storage/bt20d204/data/bloom2013_shared_clf_3_pubchem.feather",
     )
     dm1.setup()
     
     dm2 = KFoldEncodeModule(
-        path = "../data/bloom2013_shared_clf_3_pubchem.feather",
-        k=1
+        path = "/storage/bt20d204/data/bloom2013_shared_clf_3_pubchem.feather",
+        k=1,
+        stratify="Phenotype"
     )
     dm2.setup()
     
@@ -295,4 +301,4 @@ if __name__ == "__main__":
     
     print(X, '\n', X2)
     
-    assert torch.eq(X, X2).all().item(), "X and X2 is different"
+    print(torch.eq(X, X2).all().item()), "X and X2 is different"

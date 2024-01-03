@@ -1,0 +1,10 @@
+_target_: src.data.KFoldEncodeModule
+path: /storage/bt20d204/data/bloom2013_clf_3_pubchem.feather  # Default path
+format: feather
+k: 0
+split_seed: 42
+num_splits: 5
+num_workers: 4
+batch_size: 64
+test_size: 0.2
+stratify: "Phenotype"

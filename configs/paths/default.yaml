@@ -1,0 +1,9 @@
+# Some important paths
+
+root_dir: "/storage/bt20d204/yeast_growth_pred/"
+
+data_dir: "/storage/bt20d204/data/"
+
+log_dir: "/storage/bt20d204/runs/multiview/"
+
+output_dir: "/storage/bt20d204/runs/multiview/"

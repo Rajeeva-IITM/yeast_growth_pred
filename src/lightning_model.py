@@ -1,4 +1,5 @@
-from typing import Callable, List
+from typing import Any, Callable, List
+from pytorch_lightning.utilities.types import STEP_OUTPUT
 
 import torch
 # from lightning.pytorch.callbacks import Callback
@@ -252,6 +253,8 @@ class NetMultiViewLightning(LightningModule):
         
         super(NetMultiViewLightning, self).__init__()
         
+        self.save_hyperparameters()
+        
         if task == "regression":
             # Map loss function names to their respective loss functions
             loss_functions = {
@@ -260,17 +263,20 @@ class NetMultiViewLightning(LightningModule):
                 "huber": nn.HuberLoss()
             }
             
-            metrics = {
-                "mae": torchmetrics.MeanAbsoluteError(),
-                "R2": torchmetrics.R2Score()
-            }
-            
             # Check if the loss function is valid
             if loss_function not in loss_functions:
                 raise ValueError("Loss function must be one of ['mse', 'mae', 'huber']")
             
             # Set the criterion based on the loss function
             self.criterion = loss_functions[loss_function]
+            
+            self.train_mae = torchmetrics.MeanAbsoluteError()
+            self.val_mae = torchmetrics.MeanAbsoluteError()
+            self.test_mae = torchmetrics.MeanAbsoluteError()
+            
+            self.train_r2 = torchmetrics.R2Score()
+            self.val_r2 = torchmetrics.R2Score()
+            self.test_r2 = torchmetrics.R2Score()
         
         elif task == "binary_classification":
             
@@ -279,11 +285,17 @@ class NetMultiViewLightning(LightningModule):
                 "cross_entropy": nn.CrossEntropyLoss()
             }
             
-            metrics = {
-                "accuracy": torchmetrics.Accuracy(task='binary'),
-                "auc-roc": torchmetrics.AUROC(task='binary'),
-                "f1": torchmetrics.F1Score(task='binary')
-            }
+            self.train_acc = torchmetrics.Accuracy(task="binary")
+            self.val_acc = torchmetrics.Accuracy(task="binary")
+            self.test_acc = torchmetrics.Accuracy(task="binary")
+            
+            self.train_auc_roc = torchmetrics.AUROC(task="binary")
+            self.val_auc_roc = torchmetrics.AUROC(task="binary")
+            self.test_auc_roc = torchmetrics.AUROC(task="binary")
+            
+            self.train_f1 = torchmetrics.F1Score(task="binary")
+            self.val_f1 = torchmetrics.F1Score(task="binary")
+            self.test_f1 = torchmetrics.F1Score(task="binary")
             
             if loss_function not in loss_functions:
                 raise ValueError("Loss function must be one of ['bce', 'cross_entropy']")
@@ -293,8 +305,7 @@ class NetMultiViewLightning(LightningModule):
         else:
             raise ValueError("Task must be one of ['regression', 'binary_classification']")
         
-        self.save_hyperparameters()
-        
+        self.task = task
         
         #Defining model
         self.net = MultiViewNet(
@@ -305,14 +316,6 @@ class NetMultiViewLightning(LightningModule):
             dropout=dropout,
             activation=activation,
         )
-        
-        # Defining Metrics
-        
-        self.metric_names = []
-        for metric in metrics:
-            for prefix in ['train', 'val', 'test']:
-                self.metric_names.append(f"{prefix}_{metric}")
-                setattr(self, f"{prefix}_{metric}", metrics[metric])
         
         # Learning Parameters
         self.lr = lr
@@ -337,39 +340,61 @@ class NetMultiViewLightning(LightningModule):
         return [optimizer], [scheduler]
         
     def training_step(self, batch, batch_idx):
-        X, y = batch
-        y_pred = self.forward(X)
-        loss = self.criterion(y_pred, y)
-        
-        self.log(
-            "train_loss",
-            loss,
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-            logger=True
-        )
-        
-        for metric_name in filter(lambda x:'train'  in x, self.metric_names):
+            X, y = batch
+            y_pred = self.forward(X)
+            loss = self.criterion(y_pred, y)
             
-            getattr(self, metric_name).update(y_pred, y)
+            if self.task == "regression":
+                self.train_r2.update(y_pred, y)
+                self.train_mae.update(y_pred, y)
+                
+                self.log("train_r2", self.train_r2, on_epoch=True, prog_bar=True)
+                self.log("train_mae", self.train_mae, on_epoch=True, prog_bar=True)
+                
+            elif self.task == "binary_classification":
+                self.train_acc.update(y_pred, y)
+                self.train_auc_roc.update(y_pred, y)
+                self.train_f1.update(y_pred, y)
+                
+                self.log("train_acc", self.train_acc, on_epoch=True, prog_bar=True)
+                self.log("train_auc_roc", self.train_auc_roc, on_epoch=True, prog_bar=True)
+                self.log("train_f1", self.train_f1, on_epoch=True, prog_bar=True)
             
-            self.log(
-                metric_name,
-                getattr(self, metric_name),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                logger=True
-            )
-        
-        
-        return loss
-        
+            self.log("train_loss", loss, prog_bar=True)
+            
+            return loss
+    
     def validation_step(self, batch, batch_idx):
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
+        
+        
+        # for metric_name in filter(lambda x: 'val' in x, self.metric_names):
+        #     metric = getattr(self, metric_name)
+        #     metric.update(y_pred, y)
+        #     self.log(
+        #         metric_name,
+        #         metric,
+        #         on_step=False,
+        #         on_epoch=True,
+        #         prog_bar=True,
+        #         logger=True
+        #     )
+        
+        if self.task == "regression":
+            self.val_r2.update(y_pred, y)
+            self.val_mae.update(y)
+            self.log("val_r2", self.val_r2, on_epoch=True)
+            self.log("val_mae", self.val_mae, on_epoch=True)
+        
+        elif self.task == "binary_classification":
+            self.val_acc.update(y_pred, y)
+            self.val_auc_roc.update(y_pred, y)
+            self.val_f1.update(y_pred, y)
+            self.log("val_acc", self.val_acc, on_epoch=True)
+            self.log("val_auc_roc", self.val_auc_roc, on_epoch=True)
+            self.log("val_f1", self.val_f1, on_epoch=True)
         
         self.log(
             "val_loss",
@@ -379,48 +404,30 @@ class NetMultiViewLightning(LightningModule):
             prog_bar=True,
             logger=True
         )
-        
-        for metric_name in filter(lambda x:'val'  in x, self.metric_names):
-            getattr(self, metric_name).update(y_pred, y)
-            
-            self.log(
-                metric_name,
-                getattr(self, metric_name),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                logger=True
-            )
-        
-        
             
     def test_step(self, batch, batch_idx):
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
         
-        self.log(
-            "test_loss",
-            loss,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            logger=True
-        )
-        
-        for metric_name in filter(lambda x:'test' in x, self.metric_names):
-            getattr(self, metric_name).update(y_pred, y)
+        if self.task == "regression":
+            self.test_r2.update(y_pred, y)
+            self.test_mae.update(y_pred, y)
             
-            self.log(
-                metric_name,
-                getattr(self, metric_name),
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                logger=True
-            )
+            self.log("test_r2", self.test_r2, on_epoch=True, prog_bar=True)
+            self.log("test_mae", self.test_mae, on_epoch=True, prog_bar=True)
         
-            
+        elif self.task == "binary_classification":
+            self.test_acc.update(y_pred, y)
+            self.test_auc_roc.update(y_pred, y)
+            self.test_f1.update(y_pred, y)
+        
+            self.log("test_acc", self.test_acc, on_epoch=True, prog_bar=True)
+            self.log("test_auc_roc", self.test_auc_roc, on_epoch=True, prog_bar=True)
+            self.log("test_f1", self.test_f1, on_epoch=True, prog_bar=True)
+        
+        self.log("test_loss", loss, on_epoch=True, prog_bar=True)
+        
 if __name__ == "__main__":
     
     torch.set_float32_matmul_precision("high")
@@ -458,7 +465,8 @@ if __name__ == "__main__":
     # )
     
     datamodule = EncodeModule(
-        path="/storage/bt20d204/data/bloom2013_clf_3_pubchem.feather"
+        path="/storage/bt20d204/data/bloom2013_clf_3_pubchem.feather",
+        num_workers=1
     )
     
     trainer = Trainer(
