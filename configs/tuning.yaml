@@ -16,8 +16,10 @@ trainer:
   default_root_dir: ${paths.log_dir}${groupname}/
 
 optuna:
-
-  n_jobs: 4 
+  objective: val_auc_roc
+  n_jobs: 2
+  n_trials: 75
+  direction: maximize
 
   sampler:
     _target_: optuna.samplers.TPESampler

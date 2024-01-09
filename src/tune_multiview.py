@@ -3,6 +3,7 @@ import torch
 from pathlib import Path
 import hydra
 from os import makedirs
+import logging
 
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer, seed_everything
@@ -21,6 +22,7 @@ install()
 console = Console(record=True)
 
 torch.set_float32_matmul_precision("high")
+logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
 
 def objective(trial: optuna.Trial, conf: DictConfig) -> float:
     
@@ -56,6 +58,8 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
     activation = trial.suggest_categorical(
         "activation", ["relu", "tanh", "sigmoid", "celu", "gelu"]
     )
+    
+    console.print("Starting Run", justify="center")
     
     # k-Fold Cross Validation
     score_vector = []
@@ -94,7 +98,7 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
         
         trainer.fit(model, datamodule)
         
-        score_vector.append(trainer.callback_metrics["val_loss"].item())
+        score_vector.append(trainer.callback_metrics[conf.optuna.objective].item())
     
     console.rule(title="[bold red]THE RUN ENDS[/bold red]", characters="-*", align="center")
     
@@ -117,7 +121,7 @@ def main(conf: DictConfig):
     
     if not file_path.exists():
         makedirs(file_path, exist_ok=True)
-        with open(file_path / "savename.log", "w") as f:
+        with open(file_path / f"{savename}.log", "w") as f:
             console.print(f"File at [sandy_brown]{file_path}[/sandy_brown] created.")
     
     storage = optuna.storages.JournalStorage(
@@ -129,12 +133,12 @@ def main(conf: DictConfig):
         storage=storage,
         sampler=sampler,
         study_name=groupname,
-        direction="minimize",
+        direction=conf.optuna.direction,
         load_if_exists=True
     )
     
     study.optimize(
-        lambda trial: objective(trial, conf), n_trials = 100, gc_after_trial=True,
+        lambda trial: objective(trial, conf), n_trials = conf.optuna.n_trials, gc_after_trial=True,
         n_jobs=conf.optuna.n_jobs
     )
     

@@ -93,7 +93,7 @@ class KFoldEncodeModule(LightningDataModule):
         
     def setup(self, stage=None):
         
-        print("Setting up data")
+        # print("Setting up data")
         
         match self.format:
             case "feather":
@@ -213,7 +213,7 @@ class EncodeModule(LightningDataModule):
         
     def setup(self, stage=None):
         
-        print("Setting up data")
+        # print("Setting up data")
         
         match self.format:
             case "feather":
