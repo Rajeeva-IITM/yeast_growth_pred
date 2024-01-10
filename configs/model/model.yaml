@@ -1,4 +1,4 @@
-_target_:  src.lightning_model.NetMultiViewLightning
+_target_: src.lightning_model.NetMultiViewLightning
 
 # Params for Bloom2013
 
@@ -13,4 +13,3 @@ max_lr: 0.00155808
 weight_decay: 0.00293319
 task: binary_classification
 loss_function: bce
-

@@ -5,7 +5,6 @@ defaults:
   - data: dataset
   - _self_
 
-
 savename: tuning_${now:%d_%m_%Y}
 
 trainer:
@@ -28,4 +27,3 @@ optuna:
   storage:
     _target_: optuna.storages.JournalFileStorage
     file_path: ${paths.log_dir}${groupname}.log
-
