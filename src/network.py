@@ -235,6 +235,14 @@ class MultiViewNet(nn.Module):
         self.postconcat = nn.Sequential(*self.postconcat)
 
     def forward(self, x):
+        """Forward pass of the model.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, input_size).
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, output_size).
+        """
         x1 = self.view1(x[:, : self.input_size[0]])
         x2 = self.view2(x[:, self.input_size[0] :])
 

@@ -46,6 +46,15 @@ pbar = RichProgressBar(
 
 # Defining the objective
 def objective(trial: optuna.Trial) -> float:
+    """This function serves as the objective function for the optuna optimization process. It takes
+    an optuna.Trial object as a parameter and returns a float value.
+
+    Parameters:
+    - `trial` (optuna.Trial): An optuna.Trial object that represents the current trial in the optimization process.
+
+    Returns:
+    - `float`: The objective value for the current trial.
+    """
     seed_everything(42)
     torch.cuda.empty_cache()
 

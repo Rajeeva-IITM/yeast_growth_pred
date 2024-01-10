@@ -24,6 +24,32 @@ logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
 
 
 def objective(trial: optuna.Trial, conf: DictConfig) -> float:
+    """This function is the objective function for the Optuna optimization. It takes two
+    parameters:
+
+    - trial: An instance of the optuna.Trial class, which is used to sample hyperparameters for the model.
+    - conf: A configuration dictionary that contains various settings for the optimization.
+
+    The function returns a float value, which represents the average score of the model across multiple folds.
+
+    The function first sets the random seed and empties the CUDA cache. Then, it defines the input and output sizes for the model.
+
+    Next, it builds the layers before the concatenation by sampling the number of layers and the hidden size for each layer from the trial. The hidden size is updated in each iteration by dividing it by 2.
+
+    After that, it builds the layers after the concatenation in a similar way.
+
+    The function then samples the learning parameters from the trial, including the learning rate, weight decay, maximum learning rate, dropout rate, and activation function.
+
+    It prints a message indicating the start of the run.
+
+    Next, it performs k-fold cross-validation. For each fold, it initializes the datamodule and the model with the sampled hyperparameters.
+
+    It then instantiates the trainer object from the configuration and fits the model using the datamodule.
+
+    After each fold, it appends the score of the model to the score_vector.
+
+    Finally, it prints a message indicating the end of the run, and returns the mean of the score_vector as a float value.
+    """
     seed_everything(42)
     torch.cuda.empty_cache()
 
@@ -105,6 +131,14 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
 
 @hydra.main(version_base=None, config_path="../configs/", config_name="tuning.yaml")
 def main(conf: DictConfig):
+    """Runs the main function with the provided configuration.
+
+    Args:
+        conf (DictConfig): The configuration for the function.
+
+    Returns:
+        None
+    """
     pprint(conf)
 
     groupname = conf.data.metadata.groupname
