@@ -1,4 +1,8 @@
 # From https://github.com/github/gitignore/blob/main/Python.gitignore
+
+#My folders
+src/outputs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
