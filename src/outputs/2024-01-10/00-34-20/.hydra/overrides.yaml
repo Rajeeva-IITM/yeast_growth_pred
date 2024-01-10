@@ -1,0 +1,3 @@
+- data.datamodule.path=/storage/bt20d204/data/bloom_clf_3_pubchem.feather
+- data.datamodule.num_workers=10
+- data.metadata.groupname=Bloom2015

@@ -68,14 +68,14 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
         console.log("Fold {}".format(k), justify="center")
         
         datamodule = KFoldEncodeModule(
-            conf.data.path,
+            conf.data.datamodule.path,
             k=k,
-            split_seed=conf.data.split_seed,
-            num_splits=conf.data.num_splits,
-            num_workers=conf.data.num_workers,
-            batch_size=conf.data.batch_size,
-            test_size=conf.data.test_size,
-            stratify=conf.data.stratify
+            split_seed=conf.data.datamodule.split_seed,
+            num_splits=conf.data.datamodule.num_splits,
+            num_workers=conf.data.datamodule.num_workers,
+            batch_size=conf.data.datamodule.batch_size,
+            test_size=conf.data.datamodule.test_size,
+            stratify=conf.data.datamodule.stratify
         )
         
         # model
@@ -109,8 +109,8 @@ def main(conf: DictConfig):
     
     pprint(conf)
     
-    groupname = conf.get("groupname")
-    savename = conf.get("savename")
+    groupname = conf.data.metadata.groupname
+    savename = conf.data.metadata.savename
     
     # pbar_theme: RichProgressBarTheme = hydra.utils.instantiate(conf.callbacks.get("rich_progress_bar"))
     # pbar = RichProgressBar(theme=pbar_theme)

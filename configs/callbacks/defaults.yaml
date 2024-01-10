@@ -4,7 +4,7 @@ defaults:
   - rich_progress_bar
 
 model_checkpoint:
-  monitor: "vall_f1"
+  monitor: "val_auc_roc"
   mode: "max"
   save_last: 5
 

@@ -1,11 +1,11 @@
 defaults:
-  - _self_
-  - trainer: default
+  - trainer: trainer
   - callbacks: defaults
-  - paths: default
+  - paths: defaults
   - data: dataset
+  - _self_
 
-groupname: "Bloom2013"
+
 savename: tuning_${now:%d_%m_%Y}
 
 trainer:
@@ -13,11 +13,11 @@ trainer:
   enable_progress_bar: false
   enable_model_summary: false
   max_epochs: 50
-  default_root_dir: ${paths.log_dir}${groupname}/
+  default_root_dir: ${paths.log_dir}${data.metadata.groupname}/
 
 optuna:
   objective: val_auc_roc
-  n_jobs: 2
+  n_jobs: 1
   n_trials: 75
   direction: maximize
 

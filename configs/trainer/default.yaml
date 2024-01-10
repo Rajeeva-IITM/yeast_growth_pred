@@ -1,5 +1,0 @@
-_target_: pytorch_lightning.trainer.trainer.Trainer
-accelerator: gpu
-devices: 1
-max_epochs: 100
-logger: true

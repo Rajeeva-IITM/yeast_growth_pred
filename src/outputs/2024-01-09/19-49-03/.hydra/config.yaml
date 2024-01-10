@@ -1,0 +1,87 @@
+data:
+  datamodule:
+    _target_: src.data.KFoldEncodeModule
+    path: /storage/bt20d204/data/bloom2013_clf_3_pubchem.feather
+    format: feather
+    split_seed: 42
+    num_splits: 5
+    num_workers: 4
+    batch_size: 64
+    test_size: 0.2
+    stratify: Phenotype
+  metadata:
+    groupname: Bloom2013
+    savename: ${groupname}_${now:%d_%m_%Y}
+model:
+  _target_: src.lightning_model.NetMultiViewLightning
+  layers_before_concat:
+  - 2048
+  - 1024
+  layers_after_concat:
+  - 512
+  - 256
+  - 128
+  - 64
+  - 32
+  input_size:
+  - 6014
+  - 64
+  output_size: 1
+  dropout: 0.3003533
+  activation: relu
+  lr: 0.00142918
+  max_lr: 0.00155808
+  weight_decay: 0.00293319
+  task: binary_classification
+  loss_function: bce
+trainer:
+  _target_: pytorch_lightning.trainer.trainer.Trainer
+  accelerator: gpu
+  devices: 1
+  max_epochs: 100
+  logger: true
+  fast_dev_run: false
+callbacks:
+  model_checkpoint:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    dirpath: ${paths.output_dir}${dataset.metadata.savename}
+    filename: ${dataset.metadata.groupname}-{epoch}_{step}
+    monitor: val_auc
+    verbose: false
+    save_last: 5
+    save_top_k: 1
+    mode: max
+    auto_insert_metric_name: true
+    save_weights_only: false
+    every_n_train_steps: null
+    train_time_interval: null
+    every_n_epochs: null
+    save_on_train_epoch_end: null
+  model_summary:
+    _target_: pytorch_lightning.callbacks.RichModelSummary
+    max_depth: 1
+  rich_progress_bar:
+    _target_: pytorch_lightning.callbacks.progress.rich_progress.RichProgressBarTheme
+    description: '#af005f'
+    progress_bar_finished: green_yellow
+    batch_progress: cyan1
+    time: bright_red
+    metrics: gold3
+paths:
+  root_dir: /storage/bt20d204/yeast_growth_pred/
+  data_dir: /storage/bt20d204/data/
+  log_dir: /storage/bt20d204/runs/multiview/
+  output_dir: /storage/bt20d204/runs/multiview/
+logger:
+  wandb:
+    _target_: pytorch_lightning.loggers.wandb.WandbLogger
+    save_dir: ${paths.output_dir}${dataset.metadata.savename}
+    offline: false
+    id: null
+    anonymous: null
+    project: Classification - Multiview
+    log_model: false
+    prefix: ''
+    group: ${dataset.metadata.groupname}
+    tags: []
+    job_type: KFold
