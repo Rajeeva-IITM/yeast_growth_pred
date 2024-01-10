@@ -12,12 +12,17 @@ from lightning_model import NetMultiViewLightning
 
 torch.set_float32_matmul_precision("high")
 
-# name = "bloom2015_reg"
-# data_filename = "../data.datamodule/regression_data/bloom2015_regression.feather"
-
 
 @hydra.main(version_base=None, config_path="../configs/", config_name="train.yaml")
 def main(conf: DictConfig):
+    """The main function that serves as the entry point for the program.
+
+    Args:
+        conf (DictConfig): The configuration object containing various settings.
+
+    Returns:
+        None
+    """
     num_folds = conf.data.datamodule.num_splits
 
     pbar = RichProgressBar(theme=hydra.utils.instantiate(conf.callbacks.rich_progress_bar))

@@ -9,15 +9,15 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 
 class EncodeDataset(Dataset):
+    """Dataset used by Pytorch.
+
+    Args:
+        X (np.array): Input Variable
+        y (np.array): Target Variable
+        labels (Iterable, optional): Labels for the dataset. Defaults to None.
+    """
+
     def __init__(self, X, y, labels: Iterable = None) -> None:
-        """Dataset used by Pytorch.
-
-        Args:
-            X (np.array): Input Variable
-            y (np.array): Target Variable
-            labels (Iterable, optional): Labels for the dataset. Defaults to None.
-        """
-
         assert len(X) == len(y), "X, y must have the same length."
 
         self.X = X
@@ -27,6 +27,11 @@ class EncodeDataset(Dataset):
         self.labels = labels
 
     def __len__(self):
+        """Returns the length of the object.
+
+        :return: The length of the object.
+        :rtype: int
+        """
         return self.size
 
     def __getitem__(self, index) -> Any:
@@ -46,6 +51,20 @@ class EncodeDataset(Dataset):
 
 
 class KFoldEncodeModule(LightningDataModule):
+    """Lightning data module for K-Fold Cross Validation.
+
+    Args:
+        path (str): path to the dataset
+        format (str, optional): dataset format. Defaults to None.
+        k (int, optional): index of the k-fold. Defaults to 0.
+        split_seed (int, optional): Random seed. Defaults to 42.
+        num_splits (int, optional): Number of Splits. Defaults to 5.
+        num_workers (int, optional): Number of workers. Defaults to 4.
+        batch_size (int, optional): batch size. Defaults to 64.
+        test_size (float, optional): test size. Defaults to 0.2.
+        stratify (str, optional): stratify column. Defaults to None.
+    """
+
     def __init__(
         self,
         path: str,
@@ -58,20 +77,6 @@ class KFoldEncodeModule(LightningDataModule):
         test_size: float = 0.2,
         stratify: "str" = None,
     ):
-        """Lightning data module for K-Fold Cross Validation.
-
-        Args:
-            path (str): path to the dataset
-            format (str, optional): dataset format. Defaults to None.
-            k (int, optional): index of the k-fold. Defaults to 0.
-            split_seed (int, optional): Random seed. Defaults to 42.
-            num_splits (int, optional): Number of Splits. Defaults to 5.
-            num_workers (int, optional): Number of workers. Defaults to 4.
-            batch_size (int, optional): batch size. Defaults to 64.
-            test_size (float, optional): test size. Defaults to 0.2.
-            stratify (str, optional): stratify column. Defaults to None.
-        """
-
         super().__init__()
         self.path = path
 
@@ -94,6 +99,17 @@ class KFoldEncodeModule(LightningDataModule):
         self.val_dataset: Optional[Dataset] = None
 
     def setup(self, stage=None):
+        """Set up the data for the experiment.
+
+        Args:
+            stage (optional): The stage of the setup process. Defaults to None.
+
+        Raises:
+            NotImplementedError: If the file format is not supported.
+
+        Returns:
+            None
+        """
         # print("Setting up data")
 
         match self.format:
@@ -114,7 +130,7 @@ class KFoldEncodeModule(LightningDataModule):
 
         try:
             self.condition = data["Condition"]
-        except:
+        except:  # noqa: E722
             self.condition = None
 
         self.dataset = EncodeDataset(self.X.values, self.y.values)
@@ -145,6 +161,14 @@ class KFoldEncodeModule(LightningDataModule):
             self.val_dataset = Subset(self.dataset_for_split, val_index)
 
     def train_dataloader(self):
+        """Returns a PyTorch DataLoader object for the training dataset.
+
+        Parameters:
+            None
+
+        Returns:
+            DataLoader: The DataLoader object for the training dataset.
+        """
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -155,6 +179,11 @@ class KFoldEncodeModule(LightningDataModule):
         )
 
     def val_dataloader(self):
+        """Generate a validation data loader.
+
+        Returns:
+            DataLoader: The validation data loader.
+        """
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -165,6 +194,12 @@ class KFoldEncodeModule(LightningDataModule):
         )
 
     def test_dataloader(self):
+        """Generate a function comment for the given function body in a markdown code block with
+        the correct language syntax.
+
+        Returns:
+            DataLoader: The DataLoader object created with the specified parameters.
+        """
         return DataLoader(
             self.test_dataset,
             batch_size=1,
@@ -176,6 +211,19 @@ class KFoldEncodeModule(LightningDataModule):
 
 
 class EncodeModule(LightningDataModule):
+    """Lightning data module for K-Fold Cross Validation.
+
+    Args:
+        path (str): path to the dataset
+        format (str, optional): dataset format. Defaults to "feather".
+        k (int, optional): index of the k-fold. Defaults to 0.
+        split_seed (int, optional): Random seed. Defaults to 42.
+        num_splits (int, optional): Number of Splits. Defaults to 5.
+        num_workers (int, optional): Number of workers. Defaults to 4.
+        batch_size (int, optional): batch size. Defaults to 64.
+        test_size (float, optional): test size. Defaults to 0.2.
+    """
+
     def __init__(
         self,
         path: str,
@@ -185,19 +233,6 @@ class EncodeModule(LightningDataModule):
         batch_size: int = 64,
         test_size: float = 0.2,
     ):
-        """Lightning data module for K-Fold Cross Validation.
-
-        Args:
-            path (str): path to the dataset
-            format (str, optional): dataset format. Defaults to "feather".
-            k (int, optional): index of the k-fold. Defaults to 0.
-            split_seed (int, optional): Random seed. Defaults to 42.
-            num_splits (int, optional): Number of Splits. Defaults to 5.
-            num_workers (int, optional): Number of workers. Defaults to 4.
-            batch_size (int, optional): batch size. Defaults to 64.
-            test_size (float, optional): test size. Defaults to 0.2.
-        """
-
         super().__init__()
 
         self.path = path
@@ -213,6 +248,17 @@ class EncodeModule(LightningDataModule):
         self.test_size = test_size
 
     def setup(self, stage=None):
+        """Sets up the data for the model.
+
+        Parameters:
+            stage (str, optional): The stage of the setup process. Defaults to None.
+
+        Raises:
+            NotImplementedError: If the file format is not supported.
+
+        Returns:
+            None
+        """
         # print("Setting up data")
 
         match self.format:
@@ -232,7 +278,7 @@ class EncodeModule(LightningDataModule):
 
         try:
             self.condition = data["Condition"]
-        except:
+        except:  # noqa: E722
             self.condition = None
 
         # Split data into test and training subsets
@@ -261,6 +307,11 @@ class EncodeModule(LightningDataModule):
         del X_train, X_val, y_train, y_val, self.X, self.y
 
     def train_dataloader(self):
+        """Generates a training dataloader.
+
+        Returns:
+            DataLoader: The training dataloader.
+        """
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -269,6 +320,11 @@ class EncodeModule(LightningDataModule):
         )
 
     def val_dataloader(self):
+        """Generates a validation data loader.
+
+        Returns:
+            DataLoader: A data loader object.
+        """
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -277,6 +333,11 @@ class EncodeModule(LightningDataModule):
         )
 
     def test_dataloader(self):
+        """Create and return a DataLoader object for the test dataset.
+
+        Returns:
+            A DataLoader object for the test dataset.
+        """
         return DataLoader(
             self.test_dataset,
             batch_size=1,

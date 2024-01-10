@@ -13,6 +13,36 @@ from network import MultiViewNet, Net
 
 
 class Netlightning(LightningModule):
+    """A LightningModule subclass for regression tasks.
+
+    Args:
+        input_size (int): Size of the input layer.
+        output_size (int): Size of the output layer.
+        hidden_layers (List[int]): Sizes of the hidden layers.
+        dropout (float): Dropout rate.
+        lr (float): Learning rate.
+        weight_decay (float): Weight decay.
+        max_lr (float): Maximal learning rate.
+        activation (str): Activation function.
+        loss_function (str): Loss function. Must be one of ["mse", "mae", "huber"].
+
+    Attributes:
+        net (Net): The neural network architecture.
+        train_r2 (R2Score): R2 score metric for training.
+        val_r2 (R2Score): R2 score metric for validation.
+        test_r2 (R2Score): R2 score metric for testing.
+        train_mse (MeanSquaredError): Mean squared error metric for training.
+        val_mse (MeanSquaredError): Mean squared error metric for validation.
+        test_mse (MeanSquaredError): Mean squared error metric for testing.
+        train_exp_var (ExplainedVariance): Explained variance metric for training.
+        val_exp_var (ExplainedVariance): Explained variance metric for validation.
+        test_exp_var (ExplainedVariance): Explained variance metric for testing.
+        criterion (nn.Module): The loss function.
+        lr (float): Learning rate.
+        weight_decay (float): Weight decay.
+        max_lr (float): Maximal learning rate.
+    """
+
     def __init__(
         self,
         input_size: int,
@@ -25,20 +55,6 @@ class Netlightning(LightningModule):
         activation: str,
         loss_function: str,
     ):
-        """Initialize the Lightning model for regression.
-
-        Args:
-            input_size (int): size of the input layer
-            output_size (int): size of the output layer
-            hidden_layers List(int): sizes of the hidden layers
-            dropout (float): dropout
-            lr (float): learning rate
-            weight_decay (float): weigt_decay
-            max_lr (float): maximal learning rate
-            activation (str): Activation Function
-            loss_function (str): Loss Function. Must be one of ["mse", "mae", "huber"]
-        """
-
         super().__init__()
 
         self.save_hyperparameters()
@@ -79,9 +95,22 @@ class Netlightning(LightningModule):
         self.max_lr = max_lr
 
     def forward(self, x):
+        """Forward pass through the neural network.
+
+        Args:
+            x: The input tensor.
+
+        Returns:
+            The output tensor of the neural network.
+        """
         return self.net(x)
 
     def configure_optimizers(self):
+        """Returns the configured optimizers and schedulers for training the model.
+
+        Returns:
+            Tuple[List[torch.optim.Optimizer], List[torch.optim.lr_scheduler._LRScheduler]]: A tuple containing the configured optimizers and schedulers.
+        """
         optimizer = torch.optim.AdamW(
             self.parameters(),
             lr=self.lr,
@@ -96,6 +125,15 @@ class Netlightning(LightningModule):
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
+        """Executes a single training step for the model.
+
+        Args:
+            batch: A tuple containing the input data (X) and the corresponding labels (y).
+            batch_idx: An integer representing the current batch index.
+
+        Returns:
+            The calculated loss value.
+        """
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
@@ -134,6 +172,15 @@ class Netlightning(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        """Executes a single validation step in the training loop.
+
+        Args:
+            batch (tuple): A tuple containing the input features and the corresponding labels.
+            batch_idx (int): The index of the current batch.
+
+        Returns:
+            None
+        """
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
@@ -174,6 +221,15 @@ class Netlightning(LightningModule):
         return None
 
     def test_step(self, batch, batch_idx):
+        """Executes a test step in the training loop.
+
+        Args:
+            batch: The input batch containing the features and labels.
+            batch_idx: The index of the current batch.
+
+        Returns:
+            None
+        """
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
@@ -215,6 +271,22 @@ class Netlightning(LightningModule):
 
 
 class NetMultiViewLightning(LightningModule):
+    """This class implements a neural network model for multi-view data using PyTorch Lightning.
+
+    Args:
+        layers_before_concat (List[int]): A list of integers representing the number of units in each layer before concatenation.
+        layers_after_concat (List[int]): A list of integers representing the number of units in each layer after concatenation.
+        input_size (List[int]): A list of integers representing the size of the input for each view.
+        output_size (int): The size of the output.
+        dropout (float): The dropout rate.
+        activation (str): The activation function to use.
+        lr (float): The learning rate for the optimizer.
+        max_lr (float): The maximum learning rate for the one-cycle learning rate scheduler.
+        weight_decay (float): The weight decay for the optimizer.
+        task (str, optional): The task of the model. Defaults to "regression".
+        loss_function (str, optional): The loss function to use. Defaults to "mse".
+    """
+
     def __init__(
         self,
         layers_before_concat: List[int],
@@ -229,22 +301,6 @@ class NetMultiViewLightning(LightningModule):
         task: str = "regression",
         loss_function: str = "mse",
     ):
-        """_summary_
-
-        Args:
-            layers_before_concat (List[int]): _description_
-            layers_after_concat (List[int]): _description_
-            input_size (List[int]): _description_
-            output_size (int): _description_
-            dropout (float): _description_
-            activation (str): _description_
-            lr (float): _description_
-            max_lr (float): _description_
-            weight_decay (float): _description_
-            task (str, optional): Task of the model. Defaults to "regression".
-            loss_function (str, optional): _description_. Defaults to "mse".
-        """
-
         super().__init__()
 
         self.save_hyperparameters()
@@ -312,9 +368,24 @@ class NetMultiViewLightning(LightningModule):
         self.max_lr = max_lr
 
     def forward(self, x):
+        """Calculates the forward pass of the neural network.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The output tensor.
+        """
         return self.net(x)
 
     def configure_optimizers(self):
+        """Configures the optimizers for the model.
+
+        Returns:
+            A tuple containing two lists:
+                - The first list contains the optimizer(s) for the model.
+                - The second list contains the scheduler(s) for the optimizer(s).
+        """
         optimizer = torch.optim.AdamW(
             self.parameters(),
             lr=self.lr,
@@ -329,6 +400,15 @@ class NetMultiViewLightning(LightningModule):
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
+        """Executes a training step for the model.
+
+        Args:
+            batch (tuple): A tuple containing the input features and corresponding labels.
+            batch_idx (int): The index of the batch.
+
+        Returns:
+            torch.Tensor: The computed loss value.
+        """
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
@@ -354,6 +434,15 @@ class NetMultiViewLightning(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        """Performs a validation step in the training loop.
+
+        Args:
+            batch: A tuple containing the input data (X) and the target labels (y).
+            batch_idx: An integer representing the index of the current batch.
+
+        Returns:
+            None
+        """
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
@@ -387,6 +476,18 @@ class NetMultiViewLightning(LightningModule):
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
 
     def test_step(self, batch, batch_idx):
+        """Perform a test step in the training loop.
+
+        Args:
+            batch (tuple): A tuple containing the input data and labels.
+            batch_idx (int): The index of the current batch.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
         X, y = batch
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
