@@ -49,6 +49,6 @@ def predict(model, X, clf=False, device="cuda:0"):
         torch.Tensor: The predicted output tensor.
     """
     y_pred = model(X.to(device))
-    if clf:
-        y_pred = torch.argmax(y_pred, dim=1)
+    # if clf:
+    #     y_pred = torch.argmax(y_pred, dim=1)
     return y_pred

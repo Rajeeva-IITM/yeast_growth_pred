@@ -8,8 +8,8 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 from torch import nn
 
-from data import EncodeModule
-from network import MultiViewNet, Net
+from .data import EncodeModule
+from .network import MultiViewNet, Net
 
 
 class Netlightning(LightningModule):

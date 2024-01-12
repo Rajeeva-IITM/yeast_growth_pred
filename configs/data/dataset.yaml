@@ -1,6 +1,6 @@
 datamodule:
   _target_: src.data.KFoldEncodeModule
-  path: /storage/bt20d204/data/bloom2013_clf_3_pubchem.feather # Default path
+  path: ${paths.data_dir}bloom2013_clf_3_pubchem.feather # Default path
   format: feather
   # k: 0   # Won't work if I initialize here
   split_seed: 42
