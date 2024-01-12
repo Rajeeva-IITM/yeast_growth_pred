@@ -272,4 +272,4 @@ if __name__ == "__main__":
 
     test = torch.randn(20, 1200, dtype=torch.float32)
 
-    print(model)
+    print(test)
