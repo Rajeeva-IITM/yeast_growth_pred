@@ -1,9 +1,15 @@
+import logging
+from pathlib import Path
 from typing import Any, Iterable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import torch
 from pytorch_lightning import LightningDataModule
+
+# from pyarrow.dataset import dataset
+from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 from sklearn.model_selection import KFold, train_test_split
 from torch.utils.data import DataLoader, Dataset, Subset
 
@@ -19,6 +25,7 @@ class EncodeDataset(Dataset):
 
     def __init__(self, X, y, labels: Iterable = None) -> None:
         assert len(X) == len(y), "X, y must have the same length."
+        assert X.dtype == np.float32 and y.dtype == np.float32, "X, y must be of type np.float32."
 
         self.X = X
         self.y = y
@@ -45,9 +52,7 @@ class EncodeDataset(Dataset):
             X item at the given index. The second element is a numpy array of dtype np.float32 containing the y item at
             the given index and reshaped to have a shape of (1,).
         """
-        return self.X[index].astype(np.float32), np.asarray(
-            self.y[index].astype(np.float32)
-        ).reshape(1)
+        return self.X[index], np.asarray(self.y[index]).reshape(1)
 
 
 class KFoldEncodeModule(LightningDataModule):
@@ -124,7 +129,9 @@ class KFoldEncodeModule(LightningDataModule):
                     "File format not supported. Most be one of 'feather', 'parquet', 'csv'"
                 )
 
-        self.X = data.drop(["Phenotype", "Condition", "Strain"], axis=1)
+        self.X = data.drop(
+            ["Phenotype", "Condition", "Strain"], axis=1
+        )  # TODO: Need to generalize
         self.y = data["Phenotype"].astype(np.float32)
         self.stratify_col = data[self.stratify] if self.stratify else None
 
@@ -194,8 +201,7 @@ class KFoldEncodeModule(LightningDataModule):
         )
 
     def test_dataloader(self):
-        """Generate a function comment for the given function body in a markdown code block with
-        the correct language syntax.
+        """Generate a test dataloader.
 
         Returns:
             DataLoader: The DataLoader object created with the specified parameters.
@@ -259,7 +265,7 @@ class EncodeModule(LightningDataModule):
         Returns:
             None
         """
-        # print("Setting up data")
+        print("Setting up data")
 
         match self.format:
             case "feather":
@@ -346,27 +352,174 @@ class EncodeModule(LightningDataModule):
         )
 
 
+class CancerKFoldModule(LightningDataModule):
+    """Lightning data module for the  Cancer Dataset - PRISM_19Q4."""
+
+    def __init__(
+        self,
+        path: List[str],
+        format: str = "parquet",
+        k: int = 0,
+        split_seed: int = 42,
+        num_splits: int = 5,
+        num_workers: int = 4,
+        batch_size: int = 64,
+        test_size: float = 0.2,
+        stratify: "str" = None,
+    ):
+        super().__init__()
+
+        self.split_seed = split_seed
+        self.num_workers = num_workers
+        self.k = k
+        self.num_splits = num_splits
+        self.num_workers = num_workers
+        self.batch_size = batch_size
+        self.test_size = test_size
+        self.stratify = stratify
+
+        self.path = Path(path)
+        self.format = format  # TODO: add support for other formats
+
+        self.train_dataset: Optional[Dataset] = None
+        self.val_dataset: Optional[Dataset] = None
+
+        self.save_hyperparameters()
+
+    def setup(self, stage=None):
+        """Sets up the data for the model.
+
+        Parameters:
+            stage (str, optional): The stage of the setup process. Defaults to None.
+
+        Raises:
+            NotImplementedError: If the file format is not supported.
+
+        Returns:
+            None
+        """
+        logging.info("Setting up data")
+
+        files = list(self.path.glob(f"*.{self.format}"))  # There will be two files
+
+        columns = pl.scan_parquet(files).columns
+        if self.stratify is not None:
+            assert self.stratify in columns, "Stratify column not found in dataset"
+
+        x_col = [col for col in columns if (col.startswith("g") or col.startswith("l"))]
+        y_col = "Phenotype"
+
+        logging.info("Reading Training data")
+        self.train_df = pl.read_parquet(files[0], columns=x_col + [y_col])
+
+        logging.info("Reading Testing data")
+        self.test_df = pl.read_parquet(files[1], columns=x_col + [y_col])
+
+        self.test_dataset = EncodeDataset(
+            self.test_df[x_col].to_numpy().astype(np.float32),
+            self.test_df[y_col].to_numpy().astype(np.float32),
+        )
+        del self.test_df
+
+        self.dataset_for_split = EncodeDataset(
+            self.train_df[x_col].to_numpy().astype(np.float32),
+            self.train_df[y_col].to_numpy().astype(np.float32),
+        )
+        del self.train_df
+
+        # KFold validation data generation
+        if not self.train_dataset and not self.val_dataset:
+            # Create KFold object
+            kf = KFold(
+                n_splits=self.num_splits,
+                shuffle=True,
+                random_state=self.split_seed,
+            )
+
+            # Generate KFold splits
+            all_splits = list(kf.split(self.dataset_for_split))
+            train_index, val_index = all_splits[self.k]  # Get indices for particular fold
+
+            # Create training and validation subsets
+            self.train_dataset = Subset(self.dataset_for_split, train_index)
+            self.val_dataset = Subset(self.dataset_for_split, val_index)
+
+            del self.dataset_for_split
+
+    def train_dataloader(self):
+        """Generates a training dataloader.
+
+        Returns:
+            DataLoader: The training dataloader.
+        """
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=True,
+            drop_last=True,
+            pin_memory=True,
+        )
+
+    def val_dataloader(self):
+        """Generate a validation data loader.
+
+        Returns:
+            DataLoader: The validation data loader.
+        """
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=False,
+            drop_last=False,
+            pin_memory=True,
+        )
+
+    def test_dataloader(self):
+        """Generate a function comment for the given function body in a markdown code block with
+        the correct language syntax.
+
+        Returns:
+            DataLoader: The DataLoader object created with the specified parameters.
+        """
+        return DataLoader(
+            self.test_dataset,
+            batch_size=1,
+            num_workers=self.num_workers,
+            shuffle=False,
+            drop_last=False,
+            pin_memory=True,
+        )
+
+
 if __name__ == "__main__":
     # Testing
 
-    dm1 = KFoldEncodeModule(
-        path="/storage/bt20d204/data/bloom2013_shared_clf_3_pubchem.feather",
-    )
-    dm1.setup()
+    # dm1 = KFoldEncodeModule(
+    #     path="/storage/bt20d204/data/bloom2013_shared_clf_3_pubchem.feather",
+    # )
+    # dm1.setup()
 
-    dm2 = KFoldEncodeModule(
-        path="/storage/bt20d204/data/bloom2013_shared_clf_3_pubchem.feather",
-        k=1,
-        stratify="Phenotype",
-    )
-    dm2.setup()
+    # dm2 = KFoldEncodeModule(
+    #     path="/storage/bt20d204/data/bloom2013_shared_clf_3_pubchem.feather",
+    #     k=1,
+    #     stratify="Phenotype",
+    # )
+    # dm2.setup()
 
-    loader = dm1.val_dataloader()
-    X, y = next(iter(loader))
+    # loader = dm1.val_dataloader()
+    # X, y = next(iter(loader))
 
-    loader2 = dm2.val_dataloader()
-    X2, y2 = next(iter(loader2))
+    # loader2 = dm2.val_dataloader()
 
-    print(X, "\n", X2)
+    # X2, y2 = next(iter(loader2))
+    # print(X, "\n", X2)
 
-    print(torch.eq(X, X2).all().item()), "X and X2 is different"
+    # print(torch.eq(X, X2).all().item()), "X and X2 is different"
+
+    dm3 = CancerKFoldModule(path="/home/rajeeva/Project/data/cancer/PRISM_1Q94_final/")
+    dm3.setup()
+
+    X, y = next(iter(dm3.val_dataloader()))
+    print(X.shape, y.shape)
