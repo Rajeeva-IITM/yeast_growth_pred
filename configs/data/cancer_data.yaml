@@ -1,0 +1,12 @@
+datamodule:
+  _target_: src.data.CancerKFoldModule
+  path: ${paths.data_dir}cancer/PRISM_19Q4/
+  split_seed: 42
+  num_splits: 5
+  num_workers: 4
+  batch_size: 128
+
+metadata:
+  groupname: PRISM_1Q94
+  savename: ${data.metadata.groupname}_${now:%d_%m_%Y}
+# The cancer dataset should have 3 main files - the latent representation, the genotpye file and the observations

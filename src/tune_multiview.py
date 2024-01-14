@@ -4,6 +4,7 @@ from pathlib import Path
 
 import hydra
 import optuna
+import rootutils
 import torch
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer, seed_everything
@@ -13,7 +14,10 @@ from rich.console import Console
 from rich.pretty import pprint
 from rich.traceback import install
 
-from data import KFoldEncodeModule
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+# from data import KFoldEncodeModule
+import src
 from lightning_model import NetMultiViewLightning
 
 install()
@@ -30,31 +34,12 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
     - trial: An instance of the optuna.Trial class, which is used to sample hyperparameters for the model.
     - conf: A configuration dictionary that contains various settings for the optimization.
 
-    The function returns a float value, which represents the average score of the model across multiple folds.
-
-    The function first sets the random seed and empties the CUDA cache. Then, it defines the input and output sizes for the model.
-
-    Next, it builds the layers before the concatenation by sampling the number of layers and the hidden size for each layer from the trial. The hidden size is updated in each iteration by dividing it by 2.
-
-    After that, it builds the layers after the concatenation in a similar way.
-
-    The function then samples the learning parameters from the trial, including the learning rate, weight decay, maximum learning rate, dropout rate, and activation function.
-
-    It prints a message indicating the start of the run.
-
-    Next, it performs k-fold cross-validation. For each fold, it initializes the datamodule and the model with the sampled hyperparameters.
-
-    It then instantiates the trainer object from the configuration and fits the model using the datamodule.
-
-    After each fold, it appends the score of the model to the score_vector.
-
-    Finally, it prints a message indicating the end of the run, and returns the mean of the score_vector as a float value.
     """
     seed_everything(42)
     torch.cuda.empty_cache()
 
-    input_size = [6014, 64]
-    output_size = 1
+    input_size = conf.model.input_size
+    output_size = conf.model.output_size
 
     # Building view1 and view2 layers
     num_layers_before = trial.suggest_int("num_layers_before", 2, 5)
@@ -91,16 +76,18 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
     for k in range(5):
         console.log(f"Fold {k}", justify="center")
 
-        datamodule = KFoldEncodeModule(
-            conf.data.datamodule.path,
-            k=k,
-            split_seed=conf.data.datamodule.split_seed,
-            num_splits=conf.data.datamodule.num_splits,
-            num_workers=conf.data.datamodule.num_workers,
-            batch_size=conf.data.datamodule.batch_size,
-            test_size=conf.data.datamodule.test_size,
-            stratify=conf.data.datamodule.stratify,
-        )
+        # datamodule = KFoldEncodeModule(
+        #     conf.data.datamodule.path,
+        #     k=k,
+        #     split_seed=conf.data.datamodule.split_seed,
+        #     num_splits=conf.data.datamodule.num_splits,
+        #     num_workers=conf.data.datamodule.num_workers,
+        #     batch_size=conf.data.datamodule.batch_size,
+        #     test_size=conf.data.datamodule.test_size,
+        #     stratify=conf.data.datamodule.stratify,
+        # )
+
+        datamodule = hydra.utils.instantiate(conf.data.datamodule, k=k)
 
         # model
         model = NetMultiViewLightning(
@@ -113,8 +100,8 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
             lr=lr,
             max_lr=max_lr,
             weight_decay=weight_decay,
-            task="binary_classification",
-            loss_function="bce",
+            task=conf.model.task,
+            loss_function=conf.model.loss_function,
         )
 
         trainer: Trainer = hydra.utils.instantiate(conf.trainer)

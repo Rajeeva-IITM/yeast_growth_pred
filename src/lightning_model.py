@@ -8,8 +8,7 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 from torch import nn
 
-from .data import EncodeModule
-from .network import MultiViewNet, Net
+from network import MultiViewNet, Net
 
 
 class Netlightning(LightningModule):
@@ -461,7 +460,7 @@ class NetMultiViewLightning(LightningModule):
 
         if self.task == "regression":
             self.val_r2.update(y_pred, y)
-            self.val_mae.update(y)
+            self.val_mae.update(y_pred, y)
             self.log("val_r2", self.val_r2, on_epoch=True)
             self.log("val_mae", self.val_mae, on_epoch=True)
 
@@ -512,6 +511,8 @@ class NetMultiViewLightning(LightningModule):
 
 
 if __name__ == "__main__":
+    from data import EncodeModule
+
     torch.set_float32_matmul_precision("high")
 
     # model = Netlightning(

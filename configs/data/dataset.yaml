@@ -13,3 +13,4 @@ datamodule:
 metadata:
   groupname: Bloom2013
   savename: ${data.metadata.groupname}_${now:%d_%m_%Y} # Always with respect to the top config
+#

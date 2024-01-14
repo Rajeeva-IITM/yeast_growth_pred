@@ -3,11 +3,13 @@ defaults:
   - callbacks: defaults
   - paths: defaults
   - data: dataset
+  - model: model
   - _self_
 
 savename: tuning_${now:%d_%m_%Y}
 
 trainer:
+  # logger: false
   enable_checkpointing: false
   enable_progress_bar: false
   enable_model_summary: false

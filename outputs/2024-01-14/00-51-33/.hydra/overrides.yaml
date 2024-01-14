@@ -1,0 +1,10 @@
+- paths.root_dir=/home/rajeeva/Project/yeast_growth_pred
+- paths.data_dir=/home/rajeeva/Project/data/
+- paths.log_dir=/home/rajeeva/Project/runs/cancer/
+- paths.output_dir=/home/rajeeva/Project/runs/cancer/
+- data=cancer_data
+- model.input_size=[18748,256]
+- trainer.enable_progress_bar=true
+- trainer.devices=1
+- optuna.objective=val_loss
+- optuna.direction=minimize

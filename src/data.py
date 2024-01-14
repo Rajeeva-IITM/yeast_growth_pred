@@ -1,17 +1,19 @@
-import logging
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 import polars as pl
+import pyarrow.parquet as pq
 import torch
 from pytorch_lightning import LightningDataModule
-
-# from pyarrow.dataset import dataset
-from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
+from rich.console import Console
 from sklearn.model_selection import KFold, train_test_split
 from torch.utils.data import DataLoader, Dataset, Subset
+
+console = Console()
+ArrayLike = Union[List, tuple, np.ndarray]
+DataFrameLike = Union[pd.DataFrame, pl.DataFrame]
 
 
 class EncodeDataset(Dataset):
@@ -25,7 +27,7 @@ class EncodeDataset(Dataset):
 
     def __init__(self, X, y, labels: Iterable = None) -> None:
         assert len(X) == len(y), "X, y must have the same length."
-        assert X.dtype == np.float32 and y.dtype == np.float32, "X, y must be of type np.float32."
+        # assert X.dtype == np.float32 and y.dtype == np.float32, "X, y must be of type np.float32."
 
         self.X = X
         self.y = y
@@ -48,11 +50,9 @@ class EncodeDataset(Dataset):
             index (int): Index of the item to get.
 
         Returns:
-            tuple: A tuple of two elements. The first element is a numpy array of dtype np.float32 representing the
-            X item at the given index. The second element is a numpy array of dtype np.float32 containing the y item at
-            the given index and reshaped to have a shape of (1,).
+            tuple: A tuple of two elements.
         """
-        return self.X[index], np.asarray(self.y[index]).reshape(1)
+        return self.X.iloc[index].astype(np.float32), np.asarray(self.y[index]).reshape(1)
 
 
 class KFoldEncodeModule(LightningDataModule):
@@ -352,6 +352,39 @@ class EncodeModule(LightningDataModule):
         )
 
 
+class CancerDataset(Dataset):
+    """Dataset for the Cancer data - PRISM_19Q4."""
+
+    def __init__(
+        self,
+        X: DataFrameLike,
+        y: Union[ArrayLike, pd.Series],
+        geno_data: pd.DataFrame,
+        latent_data: pd.DataFrame,
+    ) -> None:
+        self.strain, self.condition = (
+            X[X.columns[0]].values,
+            X[X.columns[1]].values,
+        )  # Contains information on the observations - should be of the form: [cell_line, condition]
+        self.y = y  # Phenotype
+        self.geno_data = geno_data  # Genotype data - Index should contain the strain information
+        self.latent_data = (
+            latent_data  # Latent data - Index should contain the condition information
+        )
+
+    def __len__(self):
+        return len(self.y)
+
+    def __getitem__(self, idx):
+        strains, conditions = self.strain[idx], self.condition[idx]
+        return np.hstack(
+            (self.geno_data.loc[strains].values, self.latent_data.loc[conditions].values),
+            dtype=np.float32,
+        ), self.y[idx].reshape(
+            1,
+        )
+
+
 class CancerKFoldModule(LightningDataModule):
     """Lightning data module for the  Cancer Dataset - PRISM_19Q4."""
 
@@ -364,8 +397,8 @@ class CancerKFoldModule(LightningDataModule):
         num_splits: int = 5,
         num_workers: int = 4,
         batch_size: int = 64,
-        test_size: float = 0.2,
-        stratify: "str" = None,
+        # test_size: float = 0.2,
+        # stratify: "str" = None,
     ):
         super().__init__()
 
@@ -375,10 +408,11 @@ class CancerKFoldModule(LightningDataModule):
         self.num_splits = num_splits
         self.num_workers = num_workers
         self.batch_size = batch_size
-        self.test_size = test_size
-        self.stratify = stratify
+        # self.test_size = test_size
+        # self.stratify = stratify
 
         self.path = Path(path)
+        print(self.path)
         self.format = format  # TODO: add support for other formats
 
         self.train_dataset: Optional[Dataset] = None
@@ -398,53 +432,59 @@ class CancerKFoldModule(LightningDataModule):
         Returns:
             None
         """
-        logging.info("Setting up data")
+        console.log("Setting up data")
 
-        files = list(self.path.glob(f"*.{self.format}"))  # There will be two files
+        latent_data = pd.read_parquet(self.path / "latent.parquet").set_index("Condition")
+        geno_data = pd.read_parquet(self.path / "genotype.parquet").set_index("cell_lines")
 
-        columns = pl.scan_parquet(files).columns
-        if self.stratify is not None:
-            assert self.stratify in columns, "Stratify column not found in dataset"
-
-        x_col = [col for col in columns if (col.startswith("g") or col.startswith("l"))]
+        x_col = ["cell_lines", "Condition"]
         y_col = "Phenotype"
 
-        logging.info("Reading Training data")
-        self.train_df = pl.read_parquet(files[0], columns=x_col + [y_col])
+        if stage == "test":
+            console.log("Reading Testing data")
+            self.test_df = pq.read_table(self.path / "test.parquet")
 
-        logging.info("Reading Testing data")
-        self.test_df = pl.read_parquet(files[1], columns=x_col + [y_col])
-
-        self.test_dataset = EncodeDataset(
-            self.test_df[x_col].to_numpy().astype(np.float32),
-            self.test_df[y_col].to_numpy().astype(np.float32),
-        )
-        del self.test_df
-
-        self.dataset_for_split = EncodeDataset(
-            self.train_df[x_col].to_numpy().astype(np.float32),
-            self.train_df[y_col].to_numpy().astype(np.float32),
-        )
-        del self.train_df
-
-        # KFold validation data generation
-        if not self.train_dataset and not self.val_dataset:
-            # Create KFold object
-            kf = KFold(
-                n_splits=self.num_splits,
-                shuffle=True,
-                random_state=self.split_seed,
+            self.test_dataset = CancerDataset(
+                self.test_df.to_pandas()[x_col],
+                self.test_df.to_pandas()[y_col],
+                geno_data=geno_data,
+                latent_data=latent_data,
             )
+            del self.test_df
 
-            # Generate KFold splits
-            all_splits = list(kf.split(self.dataset_for_split))
-            train_index, val_index = all_splits[self.k]  # Get indices for particular fold
+        elif stage == "fit":
+            console.log("Reading Training data")
+            self.train_df = pl.read_parquet(self.path / "train.parquet")
+            # console.log("Read Training data")
 
-            # Create training and validation subsets
-            self.train_dataset = Subset(self.dataset_for_split, train_index)
-            self.val_dataset = Subset(self.dataset_for_split, val_index)
+            # console.log('Preparing dataset for KFold')
+            self.dataset_for_split = CancerDataset(
+                self.train_df.to_pandas()[x_col],
+                self.train_df.to_pandas()[y_col],
+                geno_data=geno_data,
+                latent_data=latent_data,
+            )
+            del self.train_df
 
-            del self.dataset_for_split
+            console.log("Generating KFold splits")
+            # KFold validation data generation
+            if not self.train_dataset and not self.val_dataset:
+                # Create KFold object
+                kf = KFold(
+                    n_splits=self.num_splits,
+                    shuffle=True,
+                    random_state=self.split_seed,
+                )
+
+                # Generate KFold splits
+                all_splits = list(kf.split(self.dataset_for_split))
+                train_index, val_index = all_splits[self.k]  # Get indices for particular fold
+
+                # Create training and validation subsets
+                self.train_dataset = Subset(self.dataset_for_split, train_index)
+                self.val_dataset = Subset(self.dataset_for_split, val_index)
+
+                del self.dataset_for_split
 
     def train_dataloader(self):
         """Generates a training dataloader.
@@ -486,7 +526,7 @@ class CancerKFoldModule(LightningDataModule):
         return DataLoader(
             self.test_dataset,
             batch_size=1,
-            num_workers=self.num_workers,
+            # num_workers=self.num_workers,
             shuffle=False,
             drop_last=False,
             pin_memory=True,
@@ -518,8 +558,11 @@ if __name__ == "__main__":
 
     # print(torch.eq(X, X2).all().item()), "X and X2 is different"
 
-    dm3 = CancerKFoldModule(path="/home/rajeeva/Project/data/cancer/PRISM_1Q94_final/")
-    dm3.setup()
+    dm3 = CancerKFoldModule(
+        path="/home/rajeeva/Project/data/cancer/PRISM_19Q4/", batch_size=256, num_workers=10
+    )
+    dm3.setup(stage="fit")
 
-    X, y = next(iter(dm3.val_dataloader()))
-    print(X.shape, y.shape)
+    for X, y in dm3.val_dataloader():
+        print(X.shape, y.shape, end="\t")
+    pass
