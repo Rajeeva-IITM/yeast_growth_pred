@@ -3,8 +3,8 @@ datamodule:
   path: ${paths.data_dir}cancer/PRISM_19Q4/
   split_seed: 42
   num_splits: 5
-  num_workers: 4
-  batch_size: 128
+  num_workers: 10
+  batch_size: 256
 
 metadata:
   groupname: PRISM_1Q94

@@ -441,7 +441,7 @@ class CancerKFoldModule(LightningDataModule):
         y_col = "Phenotype"
 
         if stage == "test":
-            console.log("Reading Testing data")
+            # console.log("Reading Testing data")
             self.test_df = pq.read_table(self.path / "test.parquet")
 
             self.test_dataset = CancerDataset(
@@ -453,7 +453,7 @@ class CancerKFoldModule(LightningDataModule):
             del self.test_df
 
         elif stage == "fit":
-            console.log("Reading Training data")
+            # console.log("Reading Training data")
             self.train_df = pl.read_parquet(self.path / "train.parquet")
             # console.log("Read Training data")
 
@@ -466,7 +466,7 @@ class CancerKFoldModule(LightningDataModule):
             )
             del self.train_df
 
-            console.log("Generating KFold splits")
+            # console.log("Generating KFold splits")
             # KFold validation data generation
             if not self.train_dataset and not self.val_dataset:
                 # Create KFold object

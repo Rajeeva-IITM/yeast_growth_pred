@@ -2,6 +2,7 @@
 
 #My folders
 src/outputs/
+outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
