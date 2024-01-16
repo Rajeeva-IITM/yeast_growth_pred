@@ -12,3 +12,4 @@ wandb:
   group: ${data.metadata.groupname}
   tags: []
   job_type: ""
+  name: ??? # I feel it's best to give names even though wandb generates them

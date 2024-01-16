@@ -1,14 +1,24 @@
 import hydra
+
+# from data import KFoldEncodeModule
+import rootutils
 import torch
 import wandb
 from omegaconf import DictConfig
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
-from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
-from pytorch_lightning.loggers.wandb import WandbLogger
 
-from data import KFoldEncodeModule
-from lightning_model import NetMultiViewLightning
+# from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import (  # , EarlyStopping
+    ModelCheckpoint,
+    RichProgressBar,
+)
+
+# from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
+# from pytorch_lightning.loggers.wandb import WandbLogger
+
+
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+# from lightning_model import Netlightning
 
 torch.set_float32_matmul_precision("high")
 
@@ -33,34 +43,17 @@ def main(conf: DictConfig):
         ckpt_savename = f"-{k}-".join(conf.callbacks.model_checkpoint.filename.split("-"))
         print(ckpt_savename)
 
-        wandb_logger = hydra.utils.instantiate(conf.logging.wandb, name=f"Fold {k}")
+        wandb_logger = hydra.utils.instantiate(
+            conf.logging.wandb, name=f"Fold {k}"
+        )  # Initialize the logger
 
-        datamodule = KFoldEncodeModule(
-            conf.data.datamodule.path,
-            k=k,
-            split_seed=conf.data.datamodule.split_seed,
-            num_splits=conf.data.datamodule.num_splits,
-            num_workers=conf.data.datamodule.num_workers,
-            batch_size=conf.data.datamodule.batch_size,
-            test_size=conf.data.datamodule.test_size,
-            stratify=conf.data.datamodule.stratify,
-        )
+        datamodule = hydra.utils.instantiate(
+            conf.data.datamodule, k=k
+        )  # Initialize the datamodule
 
         datamodule.setup()
 
-        model = NetMultiViewLightning(
-            layers_before_concat=conf.model.layers_before_concat,
-            layers_after_concat=conf.model.layers_after_concat,
-            input_size=conf.model.input_size,
-            output_size=conf.model.output_size,
-            dropout=conf.model.dropout,
-            activation=conf.model.activation,
-            lr=conf.model.lr,
-            max_lr=conf.model.max_lr,
-            weight_decay=conf.model.weight_decay,
-            task=conf.model.task,
-            loss_function=conf.model.loss_function,
-        )
+        model = hydra.utils.instantiate(conf.model)  # Initialize the model
 
         checkpoint = ModelCheckpoint(
             monitor=conf.callbacks.model_checkpoint.monitor,

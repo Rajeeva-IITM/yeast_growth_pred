@@ -359,15 +359,17 @@ class CancerDataset(Dataset):
         self,
         X: DataFrameLike,
         y: Union[ArrayLike, pd.Series],
-        geno_data: pd.DataFrame,
-        latent_data: pd.DataFrame,
+        geno_data: pd.DataFrame = None,
+        latent_data: pd.DataFrame = None,
     ) -> None:
         self.strain, self.condition = (
             X[X.columns[0]].values,
             X[X.columns[1]].values,
         )  # Contains information on the observations - should be of the form: [cell_line, condition]
         self.y = y  # Phenotype
-        self.geno_data = geno_data  # Genotype data - Index should contain the strain information
+        self.geno_data = geno_data.astype(
+            np.float32
+        )  # Genotype data - Index should contain the strain information
         self.latent_data = (
             latent_data  # Latent data - Index should contain the condition information
         )
@@ -377,16 +379,39 @@ class CancerDataset(Dataset):
 
     def __getitem__(self, idx):
         strains, conditions = self.strain[idx], self.condition[idx]
-        return np.hstack(
-            (self.geno_data.loc[strains].values, self.latent_data.loc[conditions].values),
-            dtype=np.float32,
-        ), self.y[idx].reshape(
-            1,
-        )
+
+        if (self.geno_data is not None) and (self.latent_data is not None):
+            return np.hstack(
+                (self.geno_data.loc[strains].values, self.latent_data.loc[conditions].values)
+            ), self.y[idx].reshape(
+                1,
+            )
+        elif (self.geno_data is not None) and (self.latent_data is None):
+            return self.geno_data.loc[strains].values, self.y[idx].reshape(1)
+        elif (self.geno_data is None) and (self.latent_data is not None):
+            return self.latent_data.loc[conditions].values, self.y[idx].reshape(1)
+        else:
+            return self.y[idx].reshape(1)
 
 
 class CancerKFoldModule(LightningDataModule):
-    """Lightning data module for the  Cancer Dataset - PRISM_19Q4."""
+    """Lightning data module for the  Cancer Dataset - PRISM_19Q4.
+
+    Initializes the object with the given parameters.
+
+    Args:
+        path (List[str]): The path to the data files.
+        format (str, optional): The format of the data files. Defaults to "parquet".
+        k (int, optional): The value of k. Defaults to 0.
+        split_seed (int, optional): The seed for splitting the data. Defaults to 42.
+        num_splits (int, optional): The number of data splits. Defaults to 5.
+        num_workers (int, optional): The number of workers. Defaults to 4.
+        batch_size (int, optional): The batch size. Defaults to 64.
+        use_geno_data (bool, optional): Whether to use geno data. Defaults to True.
+        use_latent_data (bool, optional): Whether to use latent data. Defaults to True.
+
+        Both use_latent_data and use_geno_data cannot be False at the same time.
+    """
 
     def __init__(
         self,
@@ -397,8 +422,8 @@ class CancerKFoldModule(LightningDataModule):
         num_splits: int = 5,
         num_workers: int = 4,
         batch_size: int = 64,
-        # test_size: float = 0.2,
-        # stratify: "str" = None,
+        use_geno_data: bool = True,
+        use_latent_data: bool = True,
     ):
         super().__init__()
 
@@ -408,15 +433,19 @@ class CancerKFoldModule(LightningDataModule):
         self.num_splits = num_splits
         self.num_workers = num_workers
         self.batch_size = batch_size
-        # self.test_size = test_size
-        # self.stratify = stratify
-
         self.path = Path(path)
         print(self.path)
         self.format = format  # TODO: add support for other formats
 
         self.train_dataset: Optional[Dataset] = None
         self.val_dataset: Optional[Dataset] = None
+
+        assert (
+            use_geno_data and use_latent_data
+        ) is False, "Both use_latent_data and use_geno_data cannot be False at the same time"
+
+        self.use_geno_data = use_geno_data
+        self.use_latent_data = use_latent_data
 
         self.save_hyperparameters()
 
@@ -434,8 +463,15 @@ class CancerKFoldModule(LightningDataModule):
         """
         console.log("Setting up data")
 
-        latent_data = pd.read_parquet(self.path / "latent.parquet").set_index("Condition")
-        geno_data = pd.read_parquet(self.path / "genotype.parquet").set_index("cell_lines")
+        if self.use_geno_data and self.use_latent_data:
+            latent_data = pd.read_parquet(self.path / "latent.parquet").set_index("Condition")
+            geno_data = pd.read_parquet(self.path / "genotype.parquet").set_index("cell_lines")
+        elif self.use_geno_data and not self.use_latent_data:
+            geno_data = pd.read_parquet(self.path / "genotype.parquet").set_index("cell_lines")
+            latent_data = None
+        elif not self.use_geno_data and self.use_latent_data:
+            latent_data = pd.read_parquet(self.path / "latent.parquet").set_index("Condition")
+            geno_data = None
 
         x_col = ["cell_lines", "Condition"]
         y_col = "Phenotype"
@@ -526,7 +562,7 @@ class CancerKFoldModule(LightningDataModule):
         return DataLoader(
             self.test_dataset,
             batch_size=1,
-            # num_workers=self.num_workers,
+            num_workers=self.num_workers,
             shuffle=False,
             drop_last=False,
             pin_memory=True,
