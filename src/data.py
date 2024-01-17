@@ -6,7 +6,7 @@ import pandas as pd
 import polars as pl
 import pyarrow.parquet as pq
 import torch
-from pytorch_lightning import LightningDataModule
+from lightning.pytorch import LightningDataModule
 from rich.console import Console
 from sklearn.model_selection import KFold, train_test_split
 from torch.utils.data import DataLoader, Dataset, Subset
@@ -366,7 +366,7 @@ class CancerDataset(Dataset):
             X[X.columns[0]].values,
             X[X.columns[1]].values,
         )  # Contains information on the observations - should be of the form: [cell_line, condition]
-        self.y = y  # Phenotype
+        self.y = y.astype(np.float32)  # Phenotype
         self.geno_data = geno_data.astype(
             np.float32
         )  # Genotype data - Index should contain the strain information
@@ -440,9 +440,10 @@ class CancerKFoldModule(LightningDataModule):
         self.train_dataset: Optional[Dataset] = None
         self.val_dataset: Optional[Dataset] = None
 
-        assert (
-            use_geno_data and use_latent_data
-        ) is False, "Both use_latent_data and use_geno_data cannot be False at the same time"
+        if (use_geno_data is False) and (use_latent_data is False):
+            raise ValueError(
+                "Both use_latent_data and use_geno_data cannot be False at the same time"
+            )
 
         self.use_geno_data = use_geno_data
         self.use_latent_data = use_latent_data

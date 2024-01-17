@@ -5,6 +5,8 @@ datamodule:
   num_splits: 5
   num_workers: 10
   batch_size: 256
+  use_geno_data: true
+  use_latent_data: true
 
 metadata:
   groupname: PRISM_1Q94

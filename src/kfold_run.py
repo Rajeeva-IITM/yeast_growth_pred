@@ -4,13 +4,13 @@ import hydra
 import rootutils
 import torch
 import wandb
-from omegaconf import DictConfig
 
 # from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import (  # , EarlyStopping
+from lightning.pytorch.callbacks import (  # , EarlyStopping
     ModelCheckpoint,
     RichProgressBar,
 )
+from omegaconf import DictConfig
 
 # from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
 # from pytorch_lightning.loggers.wandb import WandbLogger

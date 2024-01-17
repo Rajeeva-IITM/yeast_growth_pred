@@ -6,10 +6,10 @@ import hydra
 import optuna
 import rootutils
 import torch
+from lightning.pytorch import Trainer, seed_everything
+from lightning.pytorch.callbacks import RichProgressBar
+from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 from omegaconf import DictConfig
-from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import RichProgressBar
-from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
 from rich.console import Console
 from rich.pretty import pprint
 from rich.traceback import install
@@ -17,14 +17,14 @@ from rich.traceback import install
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 # from data import KFoldEncodeModule
-import src
+# import src
 from lightning_model import NetMultiViewLightning
 
 install()
 console = Console(record=True)
 
 torch.set_float32_matmul_precision("high")
-logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
+logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
 
 
 def objective(trial: optuna.Trial, conf: DictConfig) -> float:

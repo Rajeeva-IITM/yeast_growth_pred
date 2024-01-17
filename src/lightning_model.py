@@ -4,7 +4,7 @@ import torch
 
 # from lightning.pytorch.callbacks import Callback
 import torchmetrics
-from pytorch_lightning import LightningModule, Trainer
+from lightning.pytorch import LightningModule, Trainer
 from torch import nn
 
 from network import MultiViewNet, Net

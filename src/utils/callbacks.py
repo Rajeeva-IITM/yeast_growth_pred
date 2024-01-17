@@ -61,6 +61,7 @@ class KFoldPruningCallback(Callback):
             # Stopping condition: strikes > num_folds_before_pruning and trial.should_prune()
 
             if self._trial.should_prune() and self.strikes > 3:
+                self.strikes = 0  # Reset strikes
                 raise optuna.TrialPruned(
                     f"Trial {self._trial.number} pruned after {trainer.current_epoch} epochs."
                 )
