@@ -24,7 +24,7 @@ install()
 console = Console(record=True)
 
 torch.set_float32_matmul_precision("high")
-logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
+# logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
 
 
 def objective(trial: optuna.Trial, conf: DictConfig) -> float:

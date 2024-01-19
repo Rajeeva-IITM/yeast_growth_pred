@@ -322,6 +322,10 @@ class NetMultiViewLightning(LightningModule):
             self.val_r2 = torchmetrics.R2Score()
             self.test_r2 = torchmetrics.R2Score()
 
+            self.train_corr = torchmetrics.SpearmanCorrCoef()
+            self.val_corr = torchmetrics.SpearmanCorrCoef()
+            self.test_corr = torchmetrics.SpearmanCorrCoef()
+
         elif task == "binary_classification":
             loss_functions = {
                 "bce": nn.BCEWithLogitsLoss(),
@@ -414,9 +418,11 @@ class NetMultiViewLightning(LightningModule):
         if self.task == "regression":
             self.train_r2.update(y_pred, y)
             self.train_mae.update(y_pred, y)
+            self.train_corr.update(y_pred, y)
 
             self.log("train_r2", self.train_r2, on_epoch=True, prog_bar=True)
             self.log("train_mae", self.train_mae, on_epoch=True, prog_bar=True)
+            self.log("train_corr", self.train_corr, on_epoch=True, prog_bar=True)
 
         elif self.task == "binary_classification":
             self.train_acc.update(y_pred, y)
@@ -445,23 +451,13 @@ class NetMultiViewLightning(LightningModule):
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
 
-        # for metric_name in filter(lambda x: 'val' in x, self.metric_names):
-        #     metric = getattr(self, metric_name)
-        #     metric.update(y_pred, y)
-        #     self.log(
-        #         metric_name,
-        #         metric,
-        #         on_step=False,
-        #         on_epoch=True,
-        #         prog_bar=True,
-        #         logger=True
-        #     )
-
         if self.task == "regression":
             self.val_r2.update(y_pred, y)
             self.val_mae.update(y_pred, y)
+            self.val_corr.update(y_pred, y)
             self.log("val_r2", self.val_r2, on_epoch=True)
             self.log("val_mae", self.val_mae, on_epoch=True)
+            self.log("val_corr", self.val_corr, on_epoch=True)
 
         elif self.task == "binary_classification":
             self.val_acc.update(y_pred, y)
@@ -493,9 +489,11 @@ class NetMultiViewLightning(LightningModule):
         if self.task == "regression":
             self.test_r2.update(y_pred, y)
             self.test_mae.update(y_pred, y)
+            self.test_corr.update(y_pred, y)
 
             self.log("test_r2", self.test_r2, on_epoch=True, prog_bar=True)
             self.log("test_mae", self.test_mae, on_epoch=True, prog_bar=True)
+            self.log("test_corr", self.test_corr, on_epoch=True, prog_bar=True)
 
         elif self.task == "binary_classification":
             self.test_acc.update(y_pred, y)
