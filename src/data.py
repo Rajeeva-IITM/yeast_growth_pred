@@ -16,6 +16,30 @@ ArrayLike = Union[List, tuple, np.ndarray]
 DataFrameLike = Union[pd.DataFrame, pl.DataFrame]
 
 
+def read_data(path: Union[Path, str], format: str = "parquet") -> pd.DataFrame:
+    """Reads the data from the given path.
+    Needs three data: Observations, Genotype and Latent data
+
+    Args:
+        path (Union[Path, str]): The path to the observation data.
+        format (str, optional): The format of the data. Defaults to "parquet".
+
+    Returns:
+        pd.DataFrame: The data read from the path.
+    """
+    match format:
+        case "feather":
+            return pd.read_feather(path)
+        case "parquet":
+            return pd.read_parquet(path)
+        case "csv":
+            return pd.read_csv(path)
+        case _:
+            raise NotImplementedError(
+                "File format not supported. Most be one of 'feather', 'parquet', 'csv'"
+            )
+
+
 class EncodeDataset(Dataset):
     """Dataset used by Pytorch.
 
@@ -353,7 +377,16 @@ class EncodeModule(LightningDataModule):
 
 
 class CancerDataset(Dataset):
-    """Dataset for the Cancer data - PRISM_19Q4."""
+    """Dataset for the Cancer data - PRISM_19Q4.
+
+    args:
+        X (DataFrameLike): Genotype data
+        y (ArrayLike): Phenotype
+        geno_data (DataFrameLike, optional): Genotype data. Defaults to None.
+        latent_data (DataFrameLike, optional): Latent data. Defaults to None.
+        stage (str, optional): The stage of the setup process. Defaults to None. Only checks for prediction stage
+
+    """
 
     def __init__(
         self,
@@ -361,6 +394,7 @@ class CancerDataset(Dataset):
         y: Union[ArrayLike, pd.Series],
         geno_data: pd.DataFrame = None,
         latent_data: pd.DataFrame = None,
+        stage=None,
     ) -> None:
         self.strain, self.condition = (
             X[X.columns[0]].values,
@@ -373,6 +407,7 @@ class CancerDataset(Dataset):
         self.latent_data = (
             latent_data  # Latent data - Index should contain the condition information
         )
+        self.stage = stage
 
     def __len__(self):
         return len(self.y)
@@ -381,15 +416,27 @@ class CancerDataset(Dataset):
         strains, conditions = self.strain[idx], self.condition[idx]
 
         if (self.geno_data is not None) and (self.latent_data is not None):
+            if self.stage == "predict":
+                return np.hstack(
+                    (self.geno_data.loc[strains].values, self.latent_data.loc[conditions].values)
+                )
+
             return np.hstack(
                 (self.geno_data.loc[strains].values, self.latent_data.loc[conditions].values)
             ), self.y[idx].reshape(
                 1,
             )
+
         elif (self.geno_data is not None) and (self.latent_data is None):
+            if self.stage == "predict":
+                return self.geno_data.loc[strains].values
             return self.geno_data.loc[strains].values, self.y[idx].reshape(1)
+
         elif (self.geno_data is None) and (self.latent_data is not None):
+            if self.stage == "predict":
+                return self.latent_data.loc[conditions].values
             return self.latent_data.loc[conditions].values, self.y[idx].reshape(1)
+
         else:
             return self.y[idx].reshape(1)
 
@@ -400,11 +447,15 @@ class CancerKFoldModule(LightningDataModule):
     Initializes the object with the given parameters.
 
     Args:
-        path (List[str]): The path to the data files.
+        path (List[str]): The path to the data files folder.
+        presplit (bool, optional): Indicates if the data is already split. Defaults to True.
+        latent_path (Union[Path, str], optional): The path to the latent data. Defaults to None, i.e. same as `path`.
+        geno_path (Union[Path, str], optional): The path to the geno data. Defaults to None i.e. same as `path`.
         format (str, optional): The format of the data files. Defaults to "parquet".
         k (int, optional): The value of k. Defaults to 0.
         split_seed (int, optional): The seed for splitting the data. Defaults to 42.
         num_splits (int, optional): The number of data splits. Defaults to 5.
+        test_size (float, optional): The test size. Defaults to 0.2. Will not be used if data is already split.
         num_workers (int, optional): The number of workers. Defaults to 4.
         batch_size (int, optional): The batch size. Defaults to 64.
         use_geno_data (bool, optional): Whether to use geno data. Defaults to True.
@@ -416,10 +467,14 @@ class CancerKFoldModule(LightningDataModule):
     def __init__(
         self,
         path: List[str],
+        presplit: bool = True,
+        latent_path: Union[Path, str] = None,
+        geno_path: Union[Path, str] = None,
         format: str = "parquet",
         k: int = 0,
         split_seed: int = 42,
         num_splits: int = 5,
+        test_size: float = 0.2,
         num_workers: int = 4,
         batch_size: int = 64,
         use_geno_data: bool = True,
@@ -431,11 +486,26 @@ class CancerKFoldModule(LightningDataModule):
         self.num_workers = num_workers
         self.k = k
         self.num_splits = num_splits
+        self.test_size = test_size
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.path = Path(path)
-        print(self.path)
-        self.format = format  # TODO: add support for other formats
+        self.presplit = presplit
+
+        # Save paths
+        if latent_path is not None:
+            self.latent_path = Path(latent_path)
+        else:
+            if self.path.is_dir():
+                self.latent_path = self.path / f"latent.{format}"
+
+        if geno_path is not None:
+            self.geno_path = Path(geno_path)
+        else:
+            if self.path.is_dir():
+                self.geno_path = self.path / f"genotype.{format}"
+        # print(self.path)
+        self.format = format
 
         self.train_dataset: Optional[Dataset] = None
         self.val_dataset: Optional[Dataset] = None
@@ -456,30 +526,38 @@ class CancerKFoldModule(LightningDataModule):
         Parameters:
             stage (str, optional): The stage of the setup process. Defaults to None.
 
-        Raises:
-            NotImplementedError: If the file format is not supported.
-
         Returns:
             None
         """
         console.log("Setting up data")
 
         if self.use_geno_data and self.use_latent_data:
-            latent_data = pd.read_parquet(self.path / "latent.parquet").set_index("Condition")
-            geno_data = pd.read_parquet(self.path / "genotype.parquet").set_index("cell_lines")
+            latent_data = read_data(self.latent_path).set_index("Condition")
+            geno_data = read_data(self.geno_path).set_index("cell_lines")
         elif self.use_geno_data and not self.use_latent_data:
-            geno_data = pd.read_parquet(self.path / "genotype.parquet").set_index("cell_lines")
+            geno_data = read_data(self.geno_path).set_index("cell_lines")
             latent_data = None
         elif not self.use_geno_data and self.use_latent_data:
-            latent_data = pd.read_parquet(self.path / "latent.parquet").set_index("Condition")
+            latent_data = read_data(self.latent_path).set_index("Condition")
             geno_data = None
 
         x_col = ["cell_lines", "Condition"]
         y_col = "Phenotype"
 
+        # if the data is already split into test and train, the files must be named train and test or else the file should be named `data`
+        if not self.presplit:
+            data_size = pq.read_table(self.path / "data.parquet").count_rows()
+
+            train_indices, test_indices = train_test_split(
+                np.arange(data_size), test_size=self.test_size, random_state=self.split_seed
+            )
+
         if stage == "test":
-            # console.log("Reading Testing data")
-            self.test_df = pq.read_table(self.path / "test.parquet")
+            if not self.presplit:
+                self.test_df = pq.read_table(self.path / "data.parquet").take(test_indices)
+
+            else:
+                self.test_df = pq.read_table(self.path / "test.parquet")
 
             self.test_dataset = CancerDataset(
                 self.test_df.to_pandas()[x_col],
@@ -490,8 +568,11 @@ class CancerKFoldModule(LightningDataModule):
             del self.test_df
 
         elif stage == "fit":
+            if not self.presplit:
+                self.train_df = pq.read_table(self.path / "data.parquet").take(train_indices)
             # console.log("Reading Training data")
-            self.train_df = pl.read_parquet(self.path / "train.parquet")
+            else:
+                self.train_df = pl.read_parquet(self.path / "train.parquet")
             # console.log("Read Training data")
 
             # console.log('Preparing dataset for KFold')
@@ -554,8 +635,7 @@ class CancerKFoldModule(LightningDataModule):
         )
 
     def test_dataloader(self):
-        """Generate a function comment for the given function body in a markdown code block with
-        the correct language syntax.
+        """Generate a test dataloader.
 
         Returns:
             DataLoader: The DataLoader object created with the specified parameters.

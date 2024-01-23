@@ -508,46 +508,47 @@ class NetMultiViewLightning(LightningModule):
 
 
 if __name__ == "__main__":
-    from data import EncodeModule
+    # from data import EncodeModule
 
-    torch.set_float32_matmul_precision("high")
+    # torch.set_float32_matmul_precision("high")
 
-    # model = Netlightning(
-    #     input_size=6078,
+    # # model = Netlightning(
+    # #     input_size=6078,
+    # #     output_size=1,
+    # #     hidden_layers=[100, 100],
+    # #     dropout=0.5,
+    # #     lr=1e-3,
+    # #     weight_decay=1e-5,
+    # #     max_lr=1e-2,
+    # #     activation="relu",
+    # #     loss_function="mse",
+    # # )
+
+    # # Small test
+
+    # model = NetMultiViewLightning(
+    #     layers_before_concat=[100, 100],
+    #     layers_after_concat=[100, 100],
+    #     input_size=[6014, 64],
     #     output_size=1,
-    #     hidden_layers=[100, 100],
     #     dropout=0.5,
-    #     lr=1e-3,
-    #     weight_decay=1e-5,
-    #     max_lr=1e-2,
     #     activation="relu",
-    #     loss_function="mse",
+    #     lr=1e-3,
+    #     max_lr=1e-2,
+    #     weight_decay=1e-5,
+    #     task="binary_classification",
+    #     loss_function="bce",
     # )
 
-    # Small test
-
-    model = NetMultiViewLightning(
-        layers_before_concat=[100, 100],
-        layers_after_concat=[100, 100],
-        input_size=[6014, 64],
-        output_size=1,
-        dropout=0.5,
-        activation="relu",
-        lr=1e-3,
-        max_lr=1e-2,
-        weight_decay=1e-5,
-        task="binary_classification",
-        loss_function="bce",
-    )
+    # # datamodule = EncodeModule(
+    # #     path = "/storage/bt20d204/data/regression_data/bloom2013_regression.feather"
+    # # )
 
     # datamodule = EncodeModule(
-    #     path = "/storage/bt20d204/data/regression_data/bloom2013_regression.feather"
+    #     path="/storage/bt20d204/data/bloom2013_clf_3_pubchem.feather", num_workers=1
     # )
 
-    datamodule = EncodeModule(
-        path="/storage/bt20d204/data/bloom2013_clf_3_pubchem.feather", num_workers=1
-    )
+    # trainer = Trainer(accelerator="gpu", devices=1, fast_dev_run=100)
 
-    trainer = Trainer(accelerator="gpu", devices=1, fast_dev_run=100)
-
-    trainer.fit(model, datamodule)
+    # trainer.fit(model, datamodule)
+    pass
