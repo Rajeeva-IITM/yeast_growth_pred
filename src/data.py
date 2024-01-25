@@ -4,6 +4,7 @@ from typing import Any, Iterable, List, Optional, Union
 import numpy as np
 import pandas as pd
 import polars as pl
+import pyarrow as pa
 import pyarrow.parquet as pq
 import torch
 from lightning.pytorch import LightningDataModule
@@ -546,8 +547,9 @@ class CancerKFoldModule(LightningDataModule):
 
         # if the data is already split into test and train, the files must be named train and test or else the file should be named `data`
         if not self.presplit:
-            data_size = pq.read_table(self.path / "data.parquet").count_rows()
+            data_size = pa.dataset.dataset(self.path / "data.parquet").count_rows()
 
+            console.log("Splitting data")
             train_indices, test_indices = train_test_split(
                 np.arange(data_size), test_size=self.test_size, random_state=self.split_seed
             )
@@ -676,7 +678,10 @@ if __name__ == "__main__":
     # print(torch.eq(X, X2).all().item()), "X and X2 is different"
 
     dm3 = CancerKFoldModule(
-        path="/home/rajeeva/Project/data/cancer/PRISM_19Q4/", batch_size=256, num_workers=10
+        path="/home/rajeeva/Project/data/cancer/PRISM_19Q4/",
+        geno_path="/home/rajeeva/Project/data/cancer/PRISM_19Q4_classification/genotype.parquet",
+        batch_size=256,
+        num_workers=10,
     )
     dm3.setup(stage="fit")
 
