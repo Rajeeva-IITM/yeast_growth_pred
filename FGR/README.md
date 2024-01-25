@@ -7,4 +7,4 @@ For my project I will use the pretrained encoder to and train everything (the en
 
 I will use [this](load_FGR.py) file to import the Encoder module and to preprocess data.
 
-Cheers :victory-hand:
+Cheers :v:
