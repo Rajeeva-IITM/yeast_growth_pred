@@ -1,4 +1,4 @@
-_target_: src.lightning_model.NetMultiViewLightning
+_target_: code.lightning_model.NetMultiViewLightning
 
 # Params for PRISM_19Q4 - baseline
 

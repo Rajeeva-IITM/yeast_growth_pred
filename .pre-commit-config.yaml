@@ -1,7 +1,7 @@
 default_language_version: #ignore
   python: python3
 
-exclude: ^FGR/
+exclude: ^code/FGR/
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

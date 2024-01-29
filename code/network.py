@@ -2,6 +2,7 @@ from typing import Callable, List, Optional
 
 import numpy as np
 import torch
+from FGR.load_FGR import get_fgr_model
 from torch import nn
 
 
@@ -88,6 +89,41 @@ class Net(nn.Module):
             The output tensor produced by the forward pass through the network's layers.
         """
         return self.sequence(x)
+
+
+class FGRNet(Net):
+    """A neural network with the Encoder and Phenotype prediction attached end to end.
+
+    Parameters
+    ----------
+    Net : _type_
+        _description_
+    """
+
+    def __init__(
+        self,
+        fgr_model: nn.Module,
+        hidden_layers: List[int],
+        geno_size: int,
+        latent_size: int,
+        output_size: int,
+        dropout: float,
+        activation: str = "relu",
+    ):
+        super().__init__(hidden_layers, geno_size + latent_size, output_size, dropout, activation)
+
+        self.fgr_model = fgr_model
+
+        self.geno_size = geno_size
+        self.latent_size = latent_size
+
+    def forward(self, x):
+        geno_data, chem_data = x  # Pass in genotype data and chemical data
+        latent_data = self.fgr_model(chem_data)[0]
+
+        final_input = torch.cat((geno_data, latent_data), dim=1)
+
+        return self.sequence(final_input)
 
 
 class MultiViewNet(nn.Module):

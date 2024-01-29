@@ -1,4 +1,4 @@
-_target_: src.lightning_model.Netlightning
+_target_: code.lightning_model.Netlightning
 
 hidden_layers: [1024, 512, 256, 128, 64]
 input_size: 18748

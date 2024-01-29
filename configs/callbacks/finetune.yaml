@@ -1,0 +1,2 @@
+_target_: finetuning_scheduler.fts.FineTuningScheduler
+gen_ft_sched_only: true

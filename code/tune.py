@@ -5,6 +5,8 @@ from pathlib import Path
 
 import optuna
 import torch
+from data import KFoldEncodeModule
+from lightning_model import Netlightning
 
 # from torch import nn
 from pytorch_lightning import Trainer, seed_everything
@@ -12,9 +14,6 @@ from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
 from rich.console import Console
 from rich.traceback import install
-
-from data import KFoldEncodeModule
-from lightning_model import Netlightning
 
 # from pytorch_lightning.loggers.wandb import WandbLogger
 # from optuna.integration import PyTorchLightningPruningCallback

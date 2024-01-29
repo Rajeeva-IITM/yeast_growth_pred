@@ -1,13 +1,182 @@
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Tuple
 
 import torch
 
 # from lightning.pytorch.callbacks import Callback
 import torchmetrics
 from lightning.pytorch import LightningModule, Trainer
+from lightning.pytorch.utilities.types import OptimizerLRScheduler
+from network import MultiViewNet, Net
 from torch import nn
 
-from network import MultiViewNet, Net
+# import rootutils
+# rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+
+class PhenoPredict(LightningModule):
+    def __init__(
+        self,
+        net: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        scheduler: torch.optim.lr_scheduler._LRScheduler,
+        loss_function: torch.nn.Module,
+        main_metric: torchmetrics.Metric,
+        additional_metrics: torchmetrics.MetricCollection,
+        compile: bool,
+        task: str,
+    ):
+        super().__init__()
+
+        self.save_hyperparameters(logger=False, ignore=["net"])
+
+        self.net = net
+        self.criterion = loss_function
+
+        # Metric objects
+        self.train_metric = main_metric.clone()
+        self.train_additional_metrics = additional_metrics.clone()
+        self.train_additional_metrics.prefix = "train_"
+
+        self.val_metric = main_metric.clone()
+        self.val_additional_metrics = additional_metrics.clone()
+        self.val_additional_metrics.prefix = "val_"
+
+        self.test_metric = main_metric.clone()
+        self.test_additional_metrics = additional_metrics.clone()
+        self.test_additional_metrics.prefix = "test_"
+
+    def forward(self, x):
+        return self.net(x)
+
+    def on_train_start(self):
+        self.val_metric.reset()
+        self.val_additional_metrics.reset()
+
+    def model_step(self, batch: Tuple[Tuple, torch.Tensor]):
+        """A single step of the model.
+
+        :param Tuple[Tuple, torch.Tensor] batch: _description_
+        :return _type_: _description_
+        """
+        X, y = batch
+        y_pred = self.forward(X)
+        loss = self.criterion(y_pred, y)
+        return loss, y_pred, y
+
+    def training_step(self, batch, batch_idx):
+        """Training step.
+
+        :param _type_ batch: Batch
+        :param _type_ batch_idx: _description_
+        :return _type_: _description_
+        """
+
+        loss, y_pred, y = self.model_step(batch)
+
+        self.train_loss = loss
+        self.train_metric.update(y_pred, y)
+        self.train_additional_metrics.update(y_pred, y)
+
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "train_metric",
+            self.train_metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
+        self.log_dict(
+            self.train_additional_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
+
+        return loss
+
+    def validation_step(self, batch, batch_idx) -> None:
+        """Valdiation step.
+
+        Parameters
+        ----------
+        batch : _type_
+            _description_
+        batch_idx : _type_
+            index of batch
+        """
+        X, y = batch
+        y_pred = self.forward(X)
+        loss = self.criterion(y_pred, y)
+
+        self.val_loss = loss
+        self.val_metric.update(y_pred, y)
+        self.val_additional_metrics.update(y_pred, y)
+
+        # self.val_metric.compute()
+
+        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "val_metric", self.val_metric, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log_dict(
+            self.val_additional_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
+
+    def on_validation_epoch_end(self) -> None:
+        self.val_metric.reset()
+        self.val_additional_metrics.reset()
+
+    def test_step(self, batch, batch_idx) -> None:
+        """Test step."""
+
+        X, y = batch
+        y_pred = self.forward(X)
+        loss = self.criterion(y_pred, y)
+
+        self.test_loss = loss
+        self.test_metric.update(y_pred, y)
+        self.test_additional_metrics.update(y_pred, y)
+
+        self.log("test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "test_metric",
+            self.test_metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
+        self.log_dict(
+            self.test_additional_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
+
+    def setup(self, stage: str) -> None:
+        """Lightning hook that is called at the beginning of fit (train + validate), validate,
+        test, or predict.
+
+        This is a good hook when you need to build models dynamically or adjust something about
+        them. This hook is called on every process when using DDP.
+
+        Parameters
+        ----------
+        stage : str
+             Either `"fit"`, `"validate"`, `"test"`, or `"predict"`.
+        """
+        if self.hparams["compile"] and stage == "fit":
+            self.net = torch.compile(self.net)
+
+    def configure_optimizers(self):
+        """Configuring the optimizers.
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+
+        optimizer = self.hparams["optimizer"](self.parameters())
+
+        scheduler = self.hparams["scheduler"](optimizer)
+
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
 
 class Netlightning(LightningModule):

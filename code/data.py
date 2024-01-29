@@ -8,6 +8,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import torch
 from lightning.pytorch import LightningDataModule
+from pandas.core.api import Series as Series
 from rich.console import Console
 from sklearn.model_selection import KFold, train_test_split
 from torch.utils.data import DataLoader, Dataset, Subset
@@ -442,6 +443,53 @@ class CancerDataset(Dataset):
             return self.y[idx].reshape(1)
 
 
+class FGRCancerDataset(CancerDataset):
+    def __init__(
+        self,
+        X: DataFrameLike,
+        y: ArrayLike | Series,
+        geno_data: pd.DataFrame = None,
+        latent_data: pd.DataFrame = None,
+        stage=None,
+    ) -> None:
+        super().__init__(X, y, geno_data, latent_data, stage)
+
+    def __getitem__(self, idx):
+        """Only difference is here we return x as a tuple of two elements.
+
+        Args:
+            idx (_type_): index
+        """
+        strains, conditions = self.strain[idx], self.condition[idx]
+
+        if (self.geno_data is not None) and (self.latent_data is not None):
+            if self.stage == "predict":
+                return (
+                    self.geno_data.loc[strains].values,
+                    self.latent_data.loc[conditions].values,
+                )
+
+            return (
+                self.geno_data.loc[strains].values,
+                self.latent_data.loc[conditions].values,
+            ), self.y[idx].reshape(
+                1,
+            )
+
+        elif (self.geno_data is not None) and (self.latent_data is None):
+            if self.stage == "predict":
+                return self.geno_data.loc[strains].values
+            return self.geno_data.loc[strains].values, self.y[idx].reshape(1)
+
+        elif (self.geno_data is None) and (self.latent_data is not None):
+            if self.stage == "predict":
+                return self.latent_data.loc[conditions].values
+            return self.latent_data.loc[conditions].values, self.y[idx].reshape(1)
+
+        else:
+            return self.y[idx].reshape(1)
+
+
 class CancerKFoldModule(LightningDataModule):
     """Lightning data module for the  Cancer Dataset - PRISM_19Q4.
 
@@ -461,6 +509,7 @@ class CancerKFoldModule(LightningDataModule):
         batch_size (int, optional): The batch size. Defaults to 64.
         use_geno_data (bool, optional): Whether to use geno data. Defaults to True.
         use_latent_data (bool, optional): Whether to use latent data. Defaults to True.
+        fgr (bool, optional): Whether to use FGR. Defaults to False.
 
         Both use_latent_data and use_geno_data cannot be False at the same time.
     """
@@ -480,6 +529,7 @@ class CancerKFoldModule(LightningDataModule):
         batch_size: int = 64,
         use_geno_data: bool = True,
         use_latent_data: bool = True,
+        fgr: bool = False,
     ):
         super().__init__()
 
@@ -496,10 +546,12 @@ class CancerKFoldModule(LightningDataModule):
         # Save paths
         if latent_path is not None:
             self.latent_path = Path(latent_path)
+            # print(self.path)
         else:
             if self.path.is_dir():
                 self.latent_path = self.path / f"latent.{format}"
 
+        # console.log(self.path.is_dir())
         if geno_path is not None:
             self.geno_path = Path(geno_path)
         else:
@@ -518,6 +570,13 @@ class CancerKFoldModule(LightningDataModule):
 
         self.use_geno_data = use_geno_data
         self.use_latent_data = use_latent_data
+
+        if fgr:
+            self.fgr = fgr
+            self.data_class = FGRCancerDataset
+        else:
+            self.fgr = False
+            self.data_class = CancerDataset
 
         self.save_hyperparameters()
 
@@ -561,7 +620,7 @@ class CancerKFoldModule(LightningDataModule):
             else:
                 self.test_df = pq.read_table(self.path / "test.parquet")
 
-            self.test_dataset = CancerDataset(
+            self.test_dataset = self.data_class(
                 self.test_df.to_pandas()[x_col],
                 self.test_df.to_pandas()[y_col],
                 geno_data=geno_data,
@@ -578,7 +637,7 @@ class CancerKFoldModule(LightningDataModule):
             # console.log("Read Training data")
 
             # console.log('Preparing dataset for KFold')
-            self.dataset_for_split = CancerDataset(
+            self.dataset_for_split = self.data_class(
                 self.train_df.to_pandas()[x_col],
                 self.train_df.to_pandas()[y_col],
                 geno_data=geno_data,
@@ -679,12 +738,14 @@ if __name__ == "__main__":
 
     dm3 = CancerKFoldModule(
         path="/home/rajeeva/Project/data/cancer/PRISM_19Q4/",
-        geno_path="/home/rajeeva/Project/data/cancer/PRISM_19Q4_classification/genotype.parquet",
-        batch_size=256,
+        # geno_path="/home/rajeeva/Project/data/cancer/PRISM_19Q4_classification/genotype.parquet",
+        latent_path="/home/rajeeva/Project/data/cancer/ChemGroup.parquet",
+        batch_size=64,
         num_workers=10,
+        fgr=True,
     )
     dm3.setup(stage="fit")
 
     for X, y in dm3.val_dataloader():
-        print(X.shape, y.shape, end="\t")
+        print(len(X), y.shape, end="\t")
     pass

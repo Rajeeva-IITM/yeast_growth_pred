@@ -5,6 +5,7 @@ defaults:
   - callbacks: defaults
   - paths: defaults
   - logging: wandb
+  # - hydra: defaults
   - _self_
 
 logging:

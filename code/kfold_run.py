@@ -4,12 +4,10 @@ import hydra
 import rootutils
 import torch
 import wandb
+from FGR.load_FGR import get_fgr_model
 
 # from pytorch_lightning import Trainer
-from lightning.pytorch.callbacks import (  # , EarlyStopping
-    ModelCheckpoint,
-    RichProgressBar,
-)
+from lightning.pytorch.callbacks import ModelCheckpoint  # , EarlyStopping
 from omegaconf import DictConfig
 
 # from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
@@ -35,7 +33,7 @@ def main(conf: DictConfig):
     """
     num_folds = conf.data.datamodule.num_splits
 
-    pbar = RichProgressBar(theme=hydra.utils.instantiate(conf.callbacks.rich_progress_bar))
+    # pbar = RichProgressBar(theme=hydra.utils.instantiate(conf.callbacks.rich_progress_bar))
 
     for k in range(num_folds):
         print(f"Fold {k}")
@@ -53,7 +51,18 @@ def main(conf: DictConfig):
 
         datamodule.setup()
 
-        model = hydra.utils.instantiate(conf.model)  # Initialize the model
+        if conf.model.fgr:
+            fgr_model = get_fgr_model(conf.model.ckpt_path)
+            model = hydra.utils.instantiate(conf.model, fgr_model=fgr_model)
+
+        else:
+            model = hydra.utils.instantiate(conf.model)  # Initialize the model
+
+        # model = hydra.utils.instantiate(conf.model)  # Initialize the model
+
+        callbacks = [
+            hydra.utils.instantiate(cb) for cb in conf.callbacks if "model_checkpoint" not in cb
+        ]
 
         checkpoint = ModelCheckpoint(
             monitor=conf.callbacks.model_checkpoint.monitor,
@@ -63,7 +72,7 @@ def main(conf: DictConfig):
         )
 
         trainer = hydra.utils.instantiate(
-            conf.trainer, logger=wandb_logger, callbacks=[pbar, checkpoint]
+            conf.trainer, logger=wandb_logger, callbacks=[*callbacks, checkpoint]
         )
 
         trainer.fit(model, datamodule)
