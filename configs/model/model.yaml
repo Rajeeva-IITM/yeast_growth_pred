@@ -1,4 +1,4 @@
-_target_: code.lightning_model.NetMultiViewLightning
+_target_: main_code.lightning_model.NetMultiViewLightning
 
 # Params for Bloom2013
 

@@ -1,5 +1,5 @@
 datamodule:
-  _target_: code.data.CancerKFoldModule
+  _target_: main_code.data.CancerKFoldModule
   path: ${paths.data_dir}cancer/PRISM_19Q4/
   split_seed: 42
   num_splits: 5
