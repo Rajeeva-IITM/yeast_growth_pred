@@ -132,7 +132,9 @@ def save_predictions_from_dataloader(predictions: List[Any], path: Path) -> None
         raise NotImplementedError(f"{path.suffix} is not implemented!")
 
 
-def save_predictions(predictions: List[Any], dirname: str, output_format: str = "json") -> None:
+def save_predictions(
+    predictions: List[Any], dirname: str, output_format: str = "json"
+) -> None:
     """Save predictions returned by `Trainer.predict` method.
 
     Due to `LightningDataModule.predict_dataloader` return type is
@@ -174,7 +176,9 @@ def save_predictions(predictions: List[Any], dirname: str, output_format: str = 
                 continue
             target_path = path / f"predictions_{idx}.{output_format}"
             save_predictions_from_dataloader(predictions_idx, target_path)
-            log.info(f"Saved predictions for DataLoader #{idx} to: " f"{str(target_path)}")
+            log.info(
+                f"Saved predictions for DataLoader #{idx} to: " f"{str(target_path)}"
+            )
         return
 
     raise Exception(

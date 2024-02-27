@@ -1,4 +1,3 @@
-import logging
 from os import makedirs
 from pathlib import Path
 
@@ -7,18 +6,17 @@ import optuna
 import rootutils
 import torch
 from lightning.pytorch import Trainer, seed_everything
-from lightning.pytorch.callbacks import RichProgressBar
-from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 from omegaconf import DictConfig
 from rich.console import Console
 from rich.pretty import pprint
 from rich.traceback import install
 
+from lightning_model import NetMultiViewLightning
+
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 # from data import KFoldEncodeModule
 # import src
-from lightning_model import NetMultiViewLightning
 
 install()
 console = Console(record=True)
@@ -43,7 +41,9 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
 
     # Building view1 and view2 layers
     num_layers_before = trial.suggest_int("num_layers_before", 2, 5)
-    hidden_size_before = trial.suggest_categorical("hidden_size_before", [256, 512, 1024, 2048])
+    hidden_size_before = trial.suggest_categorical(
+        "hidden_size_before", [256, 512, 1024, 2048]
+    )
 
     hidden_layers_before = []
     for _ in range(num_layers_before):
@@ -52,7 +52,9 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
 
     # Building postconcatenation layers
     num_layers_after = trial.suggest_int("num_layers_after", 3, 5)
-    hidden_size_after = trial.suggest_categorical("hidden_size_after", [256, 512, 1024, 2048])
+    hidden_size_after = trial.suggest_categorical(
+        "hidden_size_after", [256, 512, 1024, 2048]
+    )
     hidden_layers_after = []
 
     for _ in range(num_layers_after):
@@ -111,7 +113,9 @@ def objective(trial: optuna.Trial, conf: DictConfig) -> float:
 
         score_vector.append(trainer.callback_metrics[conf.optuna.objective].item())
 
-    console.rule(title="[bold red]THE RUN ENDS[/bold red]", characters="-*", align="center")
+    console.rule(
+        title="[bold red]THE RUN ENDS[/bold red]", characters="-*", align="center"
+    )
 
     return torch.Tensor(score_vector).mean().item()
 
@@ -140,7 +144,7 @@ def main(conf: DictConfig):
 
     if not file_path.exists():
         makedirs(file_path, exist_ok=True)
-        with open(file_path / f"{savename}.log", "w") as f:
+        with open(file_path / f"{savename}.log", "w") as _:
             console.print(f"File at [sandy_brown]{file_path}[/sandy_brown] created.")
 
     storage = optuna.storages.JournalStorage(

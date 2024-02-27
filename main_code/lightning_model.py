@@ -1,12 +1,11 @@
-from typing import Any, Callable, List, Tuple
+from typing import List, Tuple
 
 import finetuning_scheduler as fts
 import torch
 
 # from lightning.pytorch.callbacks import Callback
 import torchmetrics
-from lightning.pytorch import LightningModule, Trainer
-from lightning.pytorch.utilities.types import OptimizerLRScheduler
+from lightning.pytorch import LightningModule
 from torch import nn
 
 from main_code.network import MultiViewNet, Net
@@ -30,7 +29,8 @@ class PhenoPredict(LightningModule):
         super().__init__()
 
         self.save_hyperparameters(
-            logger=False, ignore=["net", "loss_function", "main_metric", "additional_metrics"]
+            logger=False,
+            ignore=["net", "loss_function", "main_metric", "additional_metrics"],
         )
 
         self.net = net
@@ -88,7 +88,9 @@ class PhenoPredict(LightningModule):
         self.train_metric.update(y_pred, y)
         self.train_additional_metrics.update(y_pred, y)
 
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         self.log(
             "train_metric",
             self.train_metric,
@@ -98,7 +100,11 @@ class PhenoPredict(LightningModule):
             logger=True,
         )
         self.log_dict(
-            self.train_additional_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            self.train_additional_metrics,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
 
         return loss
@@ -106,7 +112,8 @@ class PhenoPredict(LightningModule):
     def on_train_epoch_end(self) -> None:
         if self.finetuningscheduler_callback:
             self.log(
-                "finetuning_schedule_depth", float(self.finetuningscheduler_callback.curr_depth)
+                "finetuning_schedule_depth",
+                float(self.finetuningscheduler_callback.curr_depth),
             )
 
     def validation_step(self, batch, batch_idx) -> None:
@@ -129,12 +136,23 @@ class PhenoPredict(LightningModule):
 
         # self.val_metric.compute()
 
-        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         self.log(
-            "val_metric", self.val_metric, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "val_metric",
+            self.val_metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
         self.log_dict(
-            self.val_additional_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            self.val_additional_metrics,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
 
     def on_validation_epoch_end(self) -> None:
@@ -152,7 +170,9 @@ class PhenoPredict(LightningModule):
         self.test_metric.update(y_pred, y)
         self.test_additional_metrics.update(y_pred, y)
 
-        self.log("test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
         self.log(
             "test_metric",
             self.test_metric,
@@ -162,7 +182,11 @@ class PhenoPredict(LightningModule):
             logger=True,
         )
         self.log_dict(
-            self.test_additional_metrics, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            self.test_additional_metrics,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
 
     def setup(self, stage: str) -> None:
@@ -326,7 +350,9 @@ class Netlightning(LightningModule):
         self.train_r2.update(y_pred, y)
         self.train_exp_var.update(y_pred, y)
 
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         self.log(
             "train_mse",
             self.train_mse,
@@ -373,7 +399,9 @@ class Netlightning(LightningModule):
         self.val_r2.update(y_pred, y)
         self.val_exp_var.update(y_pred, y)
 
-        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
 
         self.log(
             "val_mse",
@@ -422,7 +450,9 @@ class Netlightning(LightningModule):
         self.test_r2.update(y_pred, y)
         self.test_exp_var.update(y_pred, y)
 
-        self.log("test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
 
         self.log(
             "test_mse",
@@ -491,7 +521,11 @@ class NetMultiViewLightning(LightningModule):
 
         if task == "regression":
             # Map loss function names to their respective loss functions
-            loss_functions = {"mse": nn.MSELoss(), "mae": nn.L1Loss(), "huber": nn.HuberLoss()}
+            loss_functions = {
+                "mse": nn.MSELoss(),
+                "mae": nn.L1Loss(),
+                "huber": nn.HuberLoss(),
+            }
 
             # Check if the loss function is valid
             if loss_function not in loss_functions:
@@ -531,12 +565,16 @@ class NetMultiViewLightning(LightningModule):
             self.test_f1 = torchmetrics.F1Score(task="binary")
 
             if loss_function not in loss_functions:
-                raise ValueError("Loss function must be one of ['bce', 'cross_entropy']")
+                raise ValueError(
+                    "Loss function must be one of ['bce', 'cross_entropy']"
+                )
 
             self.criterion = loss_functions[loss_function]
 
         else:
-            raise ValueError("Task must be one of ['regression', 'binary_classification']")
+            raise ValueError(
+                "Task must be one of ['regression', 'binary_classification']"
+            )
 
         self.task = task
 
@@ -653,7 +691,9 @@ class NetMultiViewLightning(LightningModule):
             self.log("val_auc_roc", self.val_auc_roc, on_epoch=True)
             self.log("val_f1", self.val_f1, on_epoch=True)
 
-        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
 
     def test_step(self, batch, batch_idx):
         """Perform a test step in the training loop.

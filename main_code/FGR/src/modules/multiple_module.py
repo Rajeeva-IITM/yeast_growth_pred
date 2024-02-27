@@ -34,7 +34,9 @@ class MultipleLitModule(BaseLitModule):
 
         super().__init__(network, optimizer, scheduler, logging, *args, **kwargs)
         self.loss = load_loss(network.loss)
-        self.output_activation = hydra.utils.instantiate(network.output_activation, _partial_=True)
+        self.output_activation = hydra.utils.instantiate(
+            network.output_activation, _partial_=True
+        )
         self.heads = heads
 
         main_metric, valid_metric_best, add_metrics = load_metrics(network.metrics)
@@ -97,7 +99,9 @@ class MultipleLitModule(BaseLitModule):
     def training_epoch_end(self, outputs: List[Any]) -> None:
         pass
 
-    def validation_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+    def validation_step(
+        self, batch: Any, batch_idx: int, dataloader_idx: int = 0
+    ) -> Any:
         head = self.heads[dataloader_idx]
         logits = self.forward(batch["image"])[dataloader_idx]
         preds = self.output_activation(logits)

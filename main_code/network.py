@@ -1,6 +1,5 @@
-from typing import Callable, List, Optional
+from typing import List
 
-import numpy as np
 import torch
 from torch import nn
 
@@ -67,12 +66,16 @@ class Net(nn.Module):
         self.sequence = []
 
         for i in range(len(self.layers) - 2):
-            self.sequence.append(nn.Linear(self.layers[i], self.layers[i + 1], dtype=torch.float))
+            self.sequence.append(
+                nn.Linear(self.layers[i], self.layers[i + 1], dtype=torch.float)
+            )
             self.sequence.append(nn.BatchNorm1d(self.layers[i + 1], dtype=torch.float))
             self.sequence.append(self.activation)
 
         self.sequence.append(nn.Dropout(self.dropout))
-        self.sequence.append(nn.Linear(self.layers[-2], self.layers[-1], dtype=torch.float))
+        self.sequence.append(
+            nn.Linear(self.layers[-2], self.layers[-1], dtype=torch.float)
+        )
         self.sequence = nn.Sequential(*self.sequence)
 
     def forward(self, x):
@@ -110,7 +113,9 @@ class FGRNet(Net):
         dropout: float,
         activation: str = "relu",
     ):
-        super().__init__(hidden_layers, geno_size + latent_size, output_size, dropout, activation)
+        super().__init__(
+            hidden_layers, geno_size + latent_size, output_size, dropout, activation
+        )
 
         self.fgr_model = fgr_model
 
@@ -205,7 +210,9 @@ class MultiViewNet(nn.Module):
 
         # postconcatenation
         self.postconcat = [
-            nn.Linear(layers_before_concat[-1] * 2, layers_after_concat[0], dtype=torch.float),
+            nn.Linear(
+                layers_before_concat[-1] * 2, layers_after_concat[0], dtype=torch.float
+            ),
             nn.BatchNorm1d(layers_after_concat[0], dtype=torch.float),
             self.activation,
         ]
@@ -225,8 +232,12 @@ class MultiViewNet(nn.Module):
                     dtype=torch.float,
                 )
             )
-            self.view1.append(nn.BatchNorm1d(self.layers_before_concat[i + 1], dtype=torch.float))
-            self.view2.append(nn.BatchNorm1d(self.layers_before_concat[i + 1], dtype=torch.float))
+            self.view1.append(
+                nn.BatchNorm1d(self.layers_before_concat[i + 1], dtype=torch.float)
+            )
+            self.view2.append(
+                nn.BatchNorm1d(self.layers_before_concat[i + 1], dtype=torch.float)
+            )
 
             self.view1.append(self.activation)
             self.view2.append(self.activation)
@@ -236,12 +247,16 @@ class MultiViewNet(nn.Module):
 
         self.view1.append(
             nn.Linear(
-                self.layers_before_concat[-2], self.layers_before_concat[-1], dtype=torch.float
+                self.layers_before_concat[-2],
+                self.layers_before_concat[-1],
+                dtype=torch.float,
             )
         )
         self.view2.append(
             nn.Linear(
-                self.layers_before_concat[-2], self.layers_before_concat[-1], dtype=torch.float
+                self.layers_before_concat[-2],
+                self.layers_before_concat[-1],
+                dtype=torch.float,
             )
         )
 
@@ -251,7 +266,9 @@ class MultiViewNet(nn.Module):
         for i in range(len(self.layers_after_concat) - 2):
             self.postconcat.append(
                 nn.Linear(
-                    self.layers_after_concat[i], self.layers_after_concat[i + 1], dtype=torch.float
+                    self.layers_after_concat[i],
+                    self.layers_after_concat[i + 1],
+                    dtype=torch.float,
                 )
             )
             self.postconcat.append(
@@ -261,7 +278,9 @@ class MultiViewNet(nn.Module):
 
         self.postconcat.append(
             nn.Linear(
-                self.layers_after_concat[-2], self.layers_after_concat[-1], dtype=torch.float
+                self.layers_after_concat[-2],
+                self.layers_after_concat[-1],
+                dtype=torch.float,
             )
         )
         self.postconcat.append(nn.Dropout(self.dropout))

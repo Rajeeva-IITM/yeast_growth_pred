@@ -25,7 +25,9 @@ def log_gpu_memory_metadata() -> None:
         log.info(f"GPU memory info: card {i} : used  : {info.used}")
 
 
-def set_seed(seed: int = 42, deterministic: bool = True, benchmark: bool = False) -> None:
+def set_seed(
+    seed: int = 42, deterministic: bool = True, benchmark: bool = False
+) -> None:
     """Manually set seeds, deterministic and benchmark modes.
 
     Included seeds:

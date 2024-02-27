@@ -78,7 +78,9 @@ def train(cfg: DictConfig) -> Dict[str, Any]:
 
     for fold_idx in range(cfg.get("n_folds")):
         log.info(f"Instantiating datamodule fold_{fold_idx} <{cfg.data._target_}>")
-        datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, fold_idx=fold_idx)
+        datamodule: LightningDataModule = hydra.utils.instantiate(
+            cfg.data, fold_idx=fold_idx
+        )
 
         _model = deepcopy(model)
 
@@ -89,7 +91,9 @@ def train(cfg: DictConfig) -> Dict[str, Any]:
         logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
 
         log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-        trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
+        trainer: Trainer = hydra.utils.instantiate(
+            cfg.trainer, callbacks=callbacks, logger=logger
+        )
 
         object_dict = {
             "cfg": cfg,
@@ -106,7 +110,9 @@ def train(cfg: DictConfig) -> Dict[str, Any]:
 
         if cfg.get("train"):
             log.info("Starting training!")
-            trainer.fit(model=_model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
+            trainer.fit(
+                model=_model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path")
+            )
 
         train_metrics = trainer.callback_metrics
         for key, value in train_metrics.items():
@@ -162,5 +168,7 @@ def main(cfg: DictConfig) -> Optional[float]:
 
 
 if __name__ == "__main__":
-    torch.set_float32_matmul_precision("high")  # Set high precision for matrix multiplication
+    torch.set_float32_matmul_precision(
+        "high"
+    )  # Set high precision for matrix multiplication
     main()

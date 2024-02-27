@@ -137,9 +137,9 @@ class FGRDataModule(LightningDataModule):
         labels = data.drop(columns=["SMILES"]).values
 
         # Get functional groups
-        fgroups = pd.read_parquet(os.path.join(self.hparams["data_dir"], "training", "fg"))[
-            "SMARTS"
-        ].tolist()
+        fgroups = pd.read_parquet(
+            os.path.join(self.hparams["data_dir"], "training", "fg")
+        )["SMARTS"].tolist()
         fgroups_list = [MolFromSmarts(x) for x in fgroups]
 
         # Get tokenizer
@@ -180,7 +180,9 @@ class FGRDataModule(LightningDataModule):
                 raise RuntimeError(
                     f"Batch size ({self.hparams['batch_size']}) is not divisible by the number of devices ({self.trainer.world_size})."
                 )
-            self.batch_size_per_device = self.hparams["batch_size"] // self.trainer.world_size
+            self.batch_size_per_device = (
+                self.hparams["batch_size"] // self.trainer.world_size
+            )
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
@@ -370,7 +372,9 @@ class FGRPretrainDataModule(LightningDataModule):
                 raise RuntimeError(
                     f"Batch size ({self.hparams['batch_size']}) is not divisible by the number of devices ({self.trainer.world_size})."
                 )
-            self.batch_size_per_device = self.hparams["batch_size"] // self.trainer.world_size
+            self.batch_size_per_device = (
+                self.hparams["batch_size"] // self.trainer.world_size
+            )
 
         # Get training data
         df = pd.read_parquet(

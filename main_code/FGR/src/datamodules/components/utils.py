@@ -105,7 +105,9 @@ def create_butina_split(
 
         RDLogger.DisableLog("rdApp.*")
     except ImportError:
-        raise ImportError("Please install rdkit by 'conda install -c conda-forge rdkit'! ")
+        raise ImportError(
+            "Please install rdkit by 'conda install -c conda-forge rdkit'! "
+        )
 
     from random import Random
 

@@ -55,7 +55,9 @@ class NDCG(Metric):
 
 
 class MRR(Metric):
-    def __init__(self, dist_sync_on_step: bool = False, k: Optional[int] = None) -> None:
+    def __init__(
+        self, dist_sync_on_step: bool = False, k: Optional[int] = None
+    ) -> None:
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.add_state("mrr", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("count", default=torch.tensor(0.0), dist_reduce_fx="sum")
@@ -84,13 +86,17 @@ class MRR(Metric):
 
 
 class SentiMRR(Metric):
-    def __init__(self, dist_sync_on_step: bool = False, k: Optional[int] = None) -> None:
+    def __init__(
+        self, dist_sync_on_step: bool = False, k: Optional[int] = None
+    ) -> None:
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.add_state("senti_mrr", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("count", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.k = k
 
-    def update(self, y_pred: torch.Tensor, s_c: torch.Tensor, s_mean: torch.Tensor) -> None:
+    def update(
+        self, y_pred: torch.Tensor, s_c: torch.Tensor, s_mean: torch.Tensor
+    ) -> None:
         assert y_pred.shape == s_c.shape
         if self.k is None:
             order = torch.argsort(input=y_pred, descending=True)
@@ -115,7 +121,9 @@ class SentiMRR(Metric):
 
 
 class PrecisionAtRecall(Metric):
-    def __init__(self, dist_sync_on_step: bool = False, recall_point: float = 0.95) -> None:
+    def __init__(
+        self, dist_sync_on_step: bool = False, recall_point: float = 0.95
+    ) -> None:
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.add_state("correct", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("wrong", default=torch.tensor(0.0), dist_reduce_fx="sum")

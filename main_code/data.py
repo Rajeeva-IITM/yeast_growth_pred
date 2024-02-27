@@ -6,7 +6,8 @@ import pandas as pd
 import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
-import torch
+
+# import torch
 from lightning.pytorch import LightningDataModule
 from pandas.core.api import Series as Series
 from rich.console import Console
@@ -78,7 +79,7 @@ class EncodeDataset(Dataset):
         Returns:
             tuple: A tuple of two elements.
         """
-        return self.X.iloc[index].astype(np.float32), np.asarray(self.y[index]).reshape(1)
+        return self.X[index].astype(np.float32), np.asarray(self.y[index]).reshape(1)
 
 
 class KFoldEncodeModule(LightningDataModule):
@@ -183,7 +184,9 @@ class KFoldEncodeModule(LightningDataModule):
 
         if not self.train_dataset and not self.val_dataset:
             # Create KFold object
-            kf = KFold(n_splits=self.num_splits, shuffle=True, random_state=self.split_seed)
+            kf = KFold(
+                n_splits=self.num_splits, shuffle=True, random_state=self.split_seed
+            )
 
             # Split data into training and validation subsets
             all_splits = list(kf.split(self.dataset_for_split))
@@ -420,11 +423,17 @@ class CancerDataset(Dataset):
         if (self.geno_data is not None) and (self.latent_data is not None):
             if self.stage == "predict":
                 return np.hstack(
-                    (self.geno_data.loc[strains].values, self.latent_data.loc[conditions].values)
+                    (
+                        self.geno_data.loc[strains].values,
+                        self.latent_data.loc[conditions].values,
+                    )
                 )
 
             return np.hstack(
-                (self.geno_data.loc[strains].values, self.latent_data.loc[conditions].values)
+                (
+                    self.geno_data.loc[strains].values,
+                    self.latent_data.loc[conditions].values,
+                )
             ), self.y[idx].reshape(
                 1,
             )
@@ -610,12 +619,16 @@ class CancerKFoldModule(LightningDataModule):
 
             console.log("Splitting data")
             train_indices, test_indices = train_test_split(
-                np.arange(data_size), test_size=self.test_size, random_state=self.split_seed
+                np.arange(data_size),
+                test_size=self.test_size,
+                random_state=self.split_seed,
             )
 
         if stage == "test":
             if not self.presplit:
-                self.test_df = pq.read_table(self.path / "data.parquet").take(test_indices)
+                self.test_df = pq.read_table(self.path / "data.parquet").take(
+                    test_indices
+                )
 
             else:
                 self.test_df = pq.read_table(self.path / "test.parquet")
@@ -630,7 +643,9 @@ class CancerKFoldModule(LightningDataModule):
 
         elif stage == "fit":
             if not self.presplit:
-                self.train_df = pq.read_table(self.path / "data.parquet").take(train_indices)
+                self.train_df = pq.read_table(self.path / "data.parquet").take(
+                    train_indices
+                )
             # console.log("Reading Training data")
             else:
                 self.train_df = pl.read_parquet(self.path / "train.parquet")
@@ -657,7 +672,9 @@ class CancerKFoldModule(LightningDataModule):
 
                 # Generate KFold splits
                 all_splits = list(kf.split(self.dataset_for_split))
-                train_index, val_index = all_splits[self.k]  # Get indices for particular fold
+                train_index, val_index = all_splits[
+                    self.k
+                ]  # Get indices for particular fold
 
                 # Create training and validation subsets
                 self.train_dataset = Subset(self.dataset_for_split, train_index)

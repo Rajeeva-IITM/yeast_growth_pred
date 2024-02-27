@@ -1,5 +1,5 @@
-import os
-import sys
+# import os
+# import sys
 from typing import List
 
 import numpy as np
@@ -9,24 +9,31 @@ import torch
 from rdkit.Chem.rdmolfiles import MolFromSmarts
 from tokenizers import Tokenizer
 
-rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from main_code.FGR.src.data.components.utils import (
     smiles2vector_fg,
     smiles2vector_mfg,
     standardize_smiles,
 )
-from main_code.FGR.src.models.components.autoencoder import FGRPretrainModel
 from main_code.FGR.src.models.fgr_module import FGRPretrainLitModule
 
-fgroups = pd.read_parquet("/home/rajeeva/Project/yeast_growth_pred/main_code/FGR/fg.parquet")[
+from pathlib import Path
+from dotenv import dotenv_values
+
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
+
+PROJECT_DIR = Path(dotenv_values(".env")["PROJECT"]).resolve()
+
+fgroups = pd.read_parquet(PROJECT_DIR / "yeast_growth_pred/main_code/FGR/fg.parquet")[
     "SMARTS"
 ].tolist()  # Get functional groups
 fgroups_list = [MolFromSmarts(x) for x in fgroups]  # Convert to RDKit Mol
 tokenizer = Tokenizer.from_file(
-    os.path.join(
-        "/home/rajeeva/Project/yeast_growth_pred/main_code/FGR/tokenizers",
-        f"BPE_pubchem_{500}.json",
+    str(
+        PROJECT_DIR.joinpath(
+            f"yeast_growth_pred/main_code/FGR/tokenizers/BPE_pubchem_{500}.json"
+        )
     )
 )
 
@@ -76,13 +83,14 @@ def get_fgr_model(ckpt_path: str):
 
 
 if __name__ == "__main__":
-    import pickle
-
     model = get_fgr_module("/home/rajeeva/Project/outputs/epoch_000_val_0.8505.ckpt")
     print(model)
 
     x = get_representation(
-        ["CC(C)(C)NCC(O)c1cc(Cl)c(N)c(c1)C(F)(F)F", "CCN", "CCF"], "FGR", fgroups_list, tokenizer
+        ["CC(C)(C)NCC(O)c1cc(Cl)c(N)c(c1)C(F)(F)F", "CCN", "CCF"],
+        "FGR",
+        fgroups_list,
+        tokenizer,
     )
 
     x = torch.tensor(x, dtype=torch.float32, device="cuda:0")

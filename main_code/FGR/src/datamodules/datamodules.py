@@ -136,7 +136,8 @@ class FGRDataModule(LightningDataModule):
                 samples_weight = torch.tensor([class_weights[t] for t in labels.int()])
                 # Define the sampler
                 self.sampler = WeightedRandomSampler(
-                    weights=samples_weight, num_samples=len(samples_weight)  # type: ignore
+                    weights=samples_weight,
+                    num_samples=len(samples_weight),  # type: ignore
                 )
                 self.cfg_loaders.train.shuffle = False
 
@@ -145,7 +146,9 @@ class FGRDataModule(LightningDataModule):
     ) -> Union[DataLoader, List[DataLoader], Dict[str, DataLoader]]:
         if not self.regression:
             loader = DataLoader(
-                self.train_set, sampler=self.sampler, **self.cfg_loaders.get("train")  # type: ignore
+                self.train_set,
+                sampler=self.sampler,
+                **self.cfg_loaders.get("train"),  # type: ignore
             )
         else:
             loader = DataLoader(self.train_set, **self.cfg_loaders.get("train"))  # type: ignore
@@ -200,9 +203,7 @@ class FGRPretrainDataModule(LightningDataModule):
                 "training",
                 self.dataset,
             )
-        )[
-            "SMILES"
-        ].tolist()  # Get SMILES
+        )["SMILES"].tolist()  # Get SMILES
         train, valid = train_test_split(
             df, test_size=0.1, random_state=123
         )  # Split into train and validation

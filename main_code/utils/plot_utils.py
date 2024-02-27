@@ -1,8 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import torch
-from torchmetrics import AUROC, Accuracy, F1Score, MeanSquaredError, R2Score
 
 
 def set_theme() -> None:

@@ -89,7 +89,13 @@ def objective(trial: optuna.Trial) -> float:
         console.log(f"Fold {k}", justify="center")
 
         datamodule = KFoldEncodeModule(
-            filename, k=k, split_seed=42, num_splits=5, num_workers=4, batch_size=64, test_size=0.2
+            filename,
+            k=k,
+            split_seed=42,
+            num_splits=5,
+            num_workers=4,
+            batch_size=64,
+            test_size=0.2,
         )
 
         model = Netlightning(
@@ -122,7 +128,9 @@ def objective(trial: optuna.Trial) -> float:
 
 
 if __name__ == "__main__":
-    filepath = Path(f"/storage/bt20d204/runs/regression_bloom/tuning_2015/{savename}.log")
+    filepath = Path(
+        f"/storage/bt20d204/runs/regression_bloom/tuning_2015/{savename}.log"
+    )
 
     console.print(
         f"[royal_blue1]Optuna Tuning - {groupname}[/royal_blue1]",
@@ -133,7 +141,9 @@ if __name__ == "__main__":
         with filepath.open("w") as f:
             console.print(f"File at [sandy_brown]{filepath} [/sandy_brown] created.")
 
-    storage = optuna.storages.JournalStorage(optuna.storages.JournalFileStorage(str(filepath)))
+    storage = optuna.storages.JournalStorage(
+        optuna.storages.JournalFileStorage(str(filepath))
+    )
     pruner = optuna.pruners.HyperbandPruner()
     sampler = optuna.samplers.TPESampler()
 

@@ -149,7 +149,9 @@ class FGRLitModule(LightningModule):
             loss += self.loss_weights["ubc_loss"] * self.ubc_loss(z_d)
         return loss, logits, targets
 
-    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+    def training_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> None:
         """Perform a single training step on a batch of data from the training set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of features and target
@@ -179,14 +181,20 @@ class FGRLitModule(LightningModule):
         self.train_metric.update(logits, targets)
         self.train_add_metrics.update(logits, targets)
         self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log("train/main", self.train_metric, on_step=False, on_epoch=True, prog_bar=True)
-        self.log_dict(self.train_add_metrics, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "train/main", self.train_metric, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log_dict(
+            self.train_add_metrics, on_step=False, on_epoch=True, prog_bar=True
+        )
 
     def on_train_epoch_end(self) -> None:
         "Lightning hook that is called when a training epoch ends."
         pass
 
-    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+    def validation_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> None:
         """Perform a single validation step on a batch of data from the validation set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of features and target
@@ -203,7 +211,9 @@ class FGRLitModule(LightningModule):
         self.val_metric.update(logits, targets)
         self.val_add_metrics.update(logits, targets)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/main", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "val/main", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
+        )
         self.log_dict(self.val_add_metrics, on_step=False, on_epoch=True, prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
@@ -212,9 +222,13 @@ class FGRLitModule(LightningModule):
         self.val_best(main)  # update best so far val main
         # log `val_main_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/main_best", self.val_best.compute(), sync_dist=True, prog_bar=True)
+        self.log(
+            "val/main_best", self.val_best.compute(), sync_dist=True, prog_bar=True
+        )
 
-    def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+    def test_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> None:
         """Perform a single test step on a batch of data from the test set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of features and target
@@ -231,8 +245,12 @@ class FGRLitModule(LightningModule):
         self.test_metric.update(logits, targets)
         self.test_add_metrics.update(logits, targets)
         self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/main", self.test_metric, on_step=False, on_epoch=True, prog_bar=True)
-        self.log_dict(self.test_add_metrics, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "test/main", self.test_metric, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log_dict(
+            self.test_add_metrics, on_step=False, on_epoch=True, prog_bar=True
+        )
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
@@ -260,7 +278,8 @@ class FGRLitModule(LightningModule):
         :return: A dict containing the configured optimizers and learning-rate schedulers to be used for training.
         """
         optimizer = self.hparams["optimizer"](
-            params=self.trainer.model.parameters(), base_optimizer=self.hparams["base_optimizer"]  # type: ignore
+            params=self.trainer.model.parameters(),
+            base_optimizer=self.hparams["base_optimizer"],  # type: ignore
         )
         if self.hparams["scheduler"] is not None:
             scheduler = self.hparams["scheduler"](
@@ -382,7 +401,9 @@ class FGRPretrainLitModule(LightningModule):
         ubc_loss = torch.sum(off_diag**2)
         return ubc_loss
 
-    def model_step(self, batch: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def model_step(
+        self, batch: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Perform a single model step on a batch of data.
 
         :param batch: A batch of data (a tuple) containing the input tensor of features and target labels.
@@ -424,7 +445,9 @@ class FGRPretrainLitModule(LightningModule):
         # update and log metrics
         self.train_metric(x_hat, x)
         self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log("train/main", self.train_metric, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(
+            "train/main", self.train_metric, on_step=True, on_epoch=True, prog_bar=True
+        )
 
     def on_train_epoch_end(self) -> None:
         "Lightning hook that is called when a training epoch ends."
@@ -441,7 +464,9 @@ class FGRPretrainLitModule(LightningModule):
         # update and log metrics
         self.val_metric.update(x_hat, x)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/main", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "val/main", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
+        )
 
     def on_validation_epoch_end(self) -> None:
         "Lightning hook that is called when a validation epoch ends."
@@ -449,7 +474,9 @@ class FGRPretrainLitModule(LightningModule):
         self.val_best(main)  # update best so far val main
         # log `val_main_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/main_best", self.val_best.compute(), sync_dist=True, prog_bar=True)
+        self.log(
+            "val/main_best", self.val_best.compute(), sync_dist=True, prog_bar=True
+        )
 
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,
@@ -473,7 +500,8 @@ class FGRPretrainLitModule(LightningModule):
         :return: A dict containing the configured optimizers and learning-rate schedulers to be used for training.
         """
         optimizer = self.hparams["optimizer"](
-            params=self.trainer.model.parameters(), base_optimizer=self.hparams["base_optimizer"]  # type: ignore
+            params=self.trainer.model.parameters(),
+            base_optimizer=self.hparams["base_optimizer"],  # type: ignore
         )
         if self.hparams["scheduler"] is not None:
             scheduler = self.hparams["scheduler"](

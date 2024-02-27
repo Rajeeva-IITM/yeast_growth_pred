@@ -12,7 +12,9 @@ def n_lines(text: str) -> int:
     return text.count("\n") + 1
 
 
-def text_color(style: Optional[int] = None, color: Optional[int] = None) -> Tuple[str, str]:
+def text_color(
+    style: Optional[int] = None, color: Optional[int] = None
+) -> Tuple[str, str]:
     if color is None:
         color_code = 0
     else:
@@ -87,7 +89,13 @@ def view_status(inp: Any, display_len: int = 80) -> str:
                 colors[-1].append((pos, start))
                 colors[-1].append((pos + len(sub_key), end))
                 sub_res.append(sub_key + ": " + str(inp[key][sub_key]))
-                pos = pos + len(sub_key) + len(": ") + len(str(inp[key][sub_key])) + len(separator)
+                pos = (
+                    pos
+                    + len(sub_key)
+                    + len(": ")
+                    + len(str(inp[key][sub_key]))
+                    + len(separator)
+                )
             strings[-1] += separator.join(sub_res)
         else:
             strings[-1] += str(inp[key])
@@ -124,19 +132,25 @@ def view_status(inp: Any, display_len: int = 80) -> str:
             if len(string) < display_len:
                 to_print = string
                 to_print = to_print + " " * (display_len - len(to_print))
-                new_strings.append(colorize_string(to_print, split_colors, padding=padding))
+                new_strings.append(
+                    colorize_string(to_print, split_colors, padding=padding)
+                )
                 break
             elif splitter_location > 0:
                 to_print = string[:splitter_location]
                 to_print = to_print + " " * (display_len - len(to_print))
-                new_strings.append(colorize_string(to_print, split_colors, padding=padding))
+                new_strings.append(
+                    colorize_string(to_print, split_colors, padding=padding)
+                )
                 string = " " * (max_len + 1) + string[(splitter_location + 3) :]
                 position += splitter_location + 3 - padding
                 padding = max_len + 1
             else:
                 to_print = string[:string_end]
                 to_print = to_print + " " * (display_len - len(to_print))
-                new_strings.append(colorize_string(to_print, split_colors, padding=padding))
+                new_strings.append(
+                    colorize_string(to_print, split_colors, padding=padding)
+                )
                 string = " " * (max_len + 1) + string[string_end:]
                 position += string_end - padding
                 padding = max_len + 1
@@ -242,7 +256,9 @@ class TimeEstimator:
     def __str__(self) -> str:
         elapsed = str(datetime.timedelta(seconds=int(time.time() - self.start_time)))
         if self.est_finish_time is not None:
-            eta = str(datetime.timedelta(seconds=int(self.est_finish_time - time.time())))
+            eta = str(
+                datetime.timedelta(seconds=int(self.est_finish_time - time.time()))
+            )
         else:
             eta = "?"
         return f"[{elapsed}>{eta}]"

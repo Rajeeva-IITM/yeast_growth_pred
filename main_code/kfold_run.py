@@ -1,5 +1,5 @@
-import finetuning_scheduler
 import hydra
+import sys
 
 # from data import KFoldEncodeModule
 import rootutils
@@ -9,15 +9,15 @@ import wandb
 # from pytorch_lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint  # , EarlyStopping
 from omegaconf import DictConfig
+# import importlib
 
 # from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
 # from pytorch_lightning.loggers.wandb import WandbLogger
 
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-import sys
 
-from main_code.FGR.load_FGR import get_fgr_model
+# from main_code.FGR.load_FGR import get_fgr_model
 
 # from lightning_model import Netlightning
 
@@ -38,16 +38,23 @@ def main(conf: DictConfig):
 
     num_folds = conf.data.datamodule.num_splits
 
-    fgr = conf.model.fgr
-    ckpt_path = conf.model.ckpt_path
-    del conf.model.fgr
-    del conf.model.ckpt_path
+    fgr = conf.get("model.fgr", False)
+    ckpt_path = conf.get("model.ckpt_path", None)
+    if fgr:
+        from main_code.FGR.load_FGR import get_fgr_model
+        import finetuning_scheduler
+
+        del conf.model.fgr
+        del conf.model.ckpt_path
+
     # pbar = RichProgressBar(theme=hydra.utils.instantiate(conf.callbacks.rich_progress_bar))
 
     for k in range(num_folds):
         print(f"Fold {k}")
 
-        ckpt_savename = f"-{k}-".join(conf.callbacks.model_checkpoint.filename.split("-"))
+        ckpt_savename = f"-{k}-".join(
+            conf.callbacks.model_checkpoint.filename.split("-")
+        )
         print(ckpt_savename)
 
         wandb_logger = hydra.utils.instantiate(
@@ -73,7 +80,9 @@ def main(conf: DictConfig):
             # print(net)
             model = hydra.utils.instantiate(conf.model, net=net)
 
-            fts = finetuning_scheduler.FinetuningScheduler(**conf.callbacks.fine_tune_scheduler)
+            fts = finetuning_scheduler.FinetuningScheduler(
+                **conf.callbacks.fine_tune_scheduler
+            )
             callbacks.append(fts)
 
         else:

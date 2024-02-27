@@ -93,5 +93,7 @@ class FGRPretrainDataset(BaseDataset):
             mfg[mfg_idx] = 1
             x = np.concatenate((f_g, mfg))  # Concatenate both vectors
         else:
-            raise ValueError("Method not supported")  # Raise error if method not supported
+            raise ValueError(
+                "Method not supported"
+            )  # Raise error if method not supported
         return x

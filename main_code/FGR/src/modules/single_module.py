@@ -1,6 +1,5 @@
-from typing import Any, List
+from typing import Any
 
-import hydra
 from omegaconf import DictConfig
 
 from main_code.FGR.src.modules.components.lit_module import BaseLitModule

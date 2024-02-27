@@ -25,7 +25,8 @@ def get_wandb_logger(trainer: Trainer) -> WandbLogger:
                 return logger
 
     raise Exception(
-        "You are using wandb related callback, but WandbLogger was not" "found for some reason..."
+        "You are using wandb related callback, but WandbLogger was not"
+        "found for some reason..."
     )
 
 
