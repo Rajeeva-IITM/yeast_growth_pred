@@ -11,9 +11,8 @@ from rich.console import Console
 from rich.pretty import pprint
 from rich.traceback import install
 
-from lightning_model import NetMultiViewLightning
-
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+from lightning_model import NetMultiViewLightning
 
 # from data import KFoldEncodeModule
 # import src
