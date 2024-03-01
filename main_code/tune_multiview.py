@@ -12,7 +12,7 @@ from rich.pretty import pprint
 from rich.traceback import install
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-from lightning_model import NetMultiViewLightning
+from lightning_model import NetMultiViewLightning  # noqa: E402
 
 # from data import KFoldEncodeModule
 # import src

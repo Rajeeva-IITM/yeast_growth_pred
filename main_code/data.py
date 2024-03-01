@@ -559,6 +559,8 @@ class CancerKFoldModule(LightningDataModule):
         else:
             if self.path.is_dir():
                 self.latent_path = self.path / f"latent.{format}"
+            else:
+                raise ValueError(f"latent_path: {self.latent_path} is not a directory")
 
         # console.log(self.path.is_dir())
         if geno_path is not None:
@@ -566,6 +568,8 @@ class CancerKFoldModule(LightningDataModule):
         else:
             if self.path.is_dir():
                 self.geno_path = self.path / f"genotype.{format}"
+            else:
+                raise ValueError(f"latent_path: {self.geno_path} is not a directory")
         # print(self.path)
         self.format = format
 
